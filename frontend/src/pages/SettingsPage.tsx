@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { Layout, Card, Form, Input, Button, Typography, Space, Alert, Divider, Row, Col, Tabs, message, Select, Tag, Switch } from 'antd'
-import { KeyOutlined, SaveOutlined, ApiOutlined, SettingOutlined, InfoCircleOutlined, UserOutlined, RobotOutlined, SoundOutlined, PoweroffOutlined } from '@ant-design/icons'
+import { KeyOutlined, SaveOutlined, ApiOutlined, SettingOutlined, InfoCircleOutlined, RobotOutlined, SoundOutlined, PoweroffOutlined } from '@ant-design/icons'
 import { settingsApi } from '../services/api'
-import BilibiliManager from '../components/BilibiliManager'
 import SpeechRecognitionConfig from '../components/SpeechRecognitionConfig'
 import { isDesktopMode } from '../utils/desktopMode'
 import { trackApiKeyConfigured } from '../analytics/events'
@@ -16,7 +15,6 @@ const { TabPane } = Tabs
 const SettingsPage: React.FC = () => {
   const [form] = Form.useForm()
   const [loading, setLoading] = useState(false)
-  const [showBilibiliManager, setShowBilibiliManager] = useState(false)
   const [currentProvider, setCurrentProvider] = useState<any>({})
   const [selectedProvider, setSelectedProvider] = useState('deepseek')
   const [analyticsOn, setAnalyticsOn] = useState(isAnalyticsEnabled())
@@ -531,107 +529,7 @@ const SettingsPage: React.FC = () => {
             </Card>
           </TabPane>
 
-          <TabPane tab="B站管理" key="bilibili">
-            <Card title="B站账号管理" className="settings-card">
-              <div style={{ textAlign: 'center', padding: '40px 20px' }}>
-                <div style={{ marginBottom: '24px' }}>
-                  <UserOutlined style={{ fontSize: '48px', color: '#E8710A', marginBottom: '16px' }} />
-                  <Title level={3} style={{ color: 'var(--ac-ink)', margin: '0 0 8px 0' }}>
-                    B站账号管理
-                  </Title>
-                  <Text type="secondary" style={{ color: '#b0b0b0', fontSize: '16px' }}>
-                    管理您的B站账号，支持多账号切换和快速投稿
-                  </Text>
-                </div>
-                
-                <Space size="large">
-                  <Button
-                    type="primary"
-                    size="large"
-                    icon={<UserOutlined />}
-                    onClick={() => message.info('开发中，敬请期待', 3)}
-                    style={{
-                      borderRadius: '8px',
-                      background: 'linear-gradient(45deg, #E8710A, #36cfc9)',
-                      border: 'none',
-                      fontWeight: 500,
-                      height: '48px',
-                      padding: '0 32px',
-                      fontSize: '16px'
-                    }}
-                  >
-                    管理B站账号
-                  </Button>
-                </Space>
-                
-                <div style={{ marginTop: '32px', textAlign: 'left', maxWidth: '600px', margin: '32px auto 0' }}>
-                  <Title level={4} style={{ color: 'var(--ac-ink)', marginBottom: '16px' }}>
-                    功能特点
-                  </Title>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px' }}>
-                    <div style={{ 
-                      padding: '16px', 
-                      background: 'rgba(255,255,255,0.05)', 
-                      borderRadius: '8px',
-                      border: '1px solid #404040'
-                    }}>
-                      <Text strong style={{ color: '#E8710A' }}>多账号支持</Text>
-                      <br />
-                      <Text type="secondary" style={{ color: '#b0b0b0' }}>
-                        支持添加多个B站账号，方便管理和切换
-                      </Text>
-                    </div>
-                    <div style={{ 
-                      padding: '16px', 
-                      background: 'rgba(255,255,255,0.05)', 
-                      borderRadius: '8px',
-                      border: '1px solid #404040'
-                    }}>
-                      <Text strong style={{ color: '#52c41a' }}>安全登录</Text>
-                      <br />
-                      <Text type="secondary" style={{ color: '#b0b0b0' }}>
-                        使用Cookie导入，避免风控，安全可靠
-                      </Text>
-                    </div>
-                    <div style={{ 
-                      padding: '16px', 
-                      background: 'rgba(255,255,255,0.05)', 
-                      borderRadius: '8px',
-                      border: '1px solid #404040'
-                    }}>
-                      <Text strong style={{ color: '#faad14' }}>快速投稿</Text>
-                      <br />
-                      <Text type="secondary" style={{ color: '#b0b0b0' }}>
-                        在切片详情页直接选择账号投稿，操作简单
-                      </Text>
-                    </div>
-                    <div style={{ 
-                      padding: '16px', 
-                      background: 'rgba(255,255,255,0.05)', 
-                      borderRadius: '8px',
-                      border: '1px solid #404040'
-                    }}>
-                      <Text strong style={{ color: '#722ed1' }}>批量管理</Text>
-                      <br />
-                      <Text type="secondary" style={{ color: '#b0b0b0' }}>
-                        支持批量上传多个切片，提高效率
-                      </Text>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </Card>
-          </TabPane>
         </Tabs>
-
-        {/* B站管理弹窗 */}
-        <BilibiliManager
-          visible={showBilibiliManager}
-          onClose={() => setShowBilibiliManager(false)}
-          onUploadSuccess={() => {
-            message.success('操作成功')
-          }}
-        />
       </div>
     </Content>
   )

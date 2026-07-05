@@ -150,40 +150,6 @@ export interface ProcessingStatus {
   error_message?: string
 }
 
-// B站相关接口类型
-export interface BilibiliVideoInfo {
-  title: string
-  description: string
-  duration: number
-  uploader: string
-  upload_date: string
-  view_count: number
-  like_count: number
-  thumbnail: string
-  url: string
-}
-
-export interface BilibiliDownloadRequest {
-  url: string
-  project_name: string
-  video_category?: string
-  browser?: string
-}
-
-export interface BilibiliDownloadTask {
-  id: string
-  url: string
-  project_name: string
-  video_category?: string
-  browser?: string
-  status: 'pending' | 'processing' | 'completed' | 'failed'
-  progress: number
-  error_message?: string
-  video_info?: BilibiliVideoInfo
-  project_id?: string
-  created_at: string
-  updated_at: string
-}
 
 // 设置相关API
 export const settingsApi = {
@@ -549,41 +515,6 @@ export const projectApi = {
   generateThumbnail: async (projectId: string): Promise<{success: boolean, thumbnail: string, message: string}> => {
     return api.post(`/projects/${projectId}/generate-thumbnail`)
   }
-}
-
-// 视频下载相关API
-export const bilibiliApi = {
-  // 解析B站视频信息
-  parseVideoInfo: async (url: string, browser?: string): Promise<{success: boolean, video_info: BilibiliVideoInfo}> => {
-    const formData = new FormData()
-    formData.append('url', url)
-    if (browser) {
-      formData.append('browser', browser)
-    }
-    return api.post('/bilibili/parse', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    })
-  },
-
-  // 创建B站下载任务
-  createDownloadTask: async (data: BilibiliDownloadRequest): Promise<BilibiliDownloadTask> => {
-    const task = await api.post<unknown, BilibiliDownloadTask>('/bilibili/download', data)
-    trackVideoImported({ source: 'url', fileType: 'bilibili' })
-    return task
-  },
-
-  // 获取下载任务状态
-  getTaskStatus: async (taskId: string): Promise<BilibiliDownloadTask> => {
-    return api.get(`/bilibili/tasks/${taskId}`)
-  },
-
-  // 获取所有下载任务
-  getAllTasks: async (): Promise<BilibiliDownloadTask[]> => {
-    return api.get('/bilibili/tasks')
-  }
-  // 注：YouTube 在线下载接口已移除（parse/download/tasks）。
 }
 
 // 系统状态相关API

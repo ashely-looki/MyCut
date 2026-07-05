@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
 import { Card, Button, Tooltip, Modal, message } from 'antd'
-import { PlayCircleOutlined, DownloadOutlined, ClockCircleOutlined, StarFilled, UploadOutlined } from '@ant-design/icons'
+import { PlayCircleOutlined, DownloadOutlined, ClockCircleOutlined, StarFilled } from '@ant-design/icons'
 import ReactPlayer from 'react-player'
 import { Clip } from '../store/useProjectStore'
-import BilibiliManager from './BilibiliManager'
 import EditableTitle from './EditableTitle'
 import './ClipCard.css'
 
@@ -15,16 +14,14 @@ interface ClipCardProps {
   onClipUpdate?: (clipId: string, updates: Partial<Clip>) => void
 }
 
-const ClipCard: React.FC<ClipCardProps> = ({ 
-  clip, 
-  videoUrl, 
+const ClipCard: React.FC<ClipCardProps> = ({
+  clip,
+  videoUrl,
   onDownload,
-  projectId,
   onClipUpdate
 }) => {
   const [showPlayer, setShowPlayer] = useState(false)
   const [videoThumbnail, setVideoThumbnail] = useState<string | null>(null)
-  const [showBilibiliManager, setShowBilibiliManager] = useState(false)
   const playerRef = useRef<ReactPlayer>(null)
 
   // 生成视频缩略图
@@ -381,23 +378,6 @@ const ClipCard: React.FC<ClipCardProps> = ({
               >
                 下载
               </Button>
-              <Button
-                type="text"
-                size="small"
-                icon={<UploadOutlined />}
-                onClick={() => message.info('开发中，敬请期待', 3)}
-                style={{
-                  color: 'var(--ac-sub)',
-                  border: '1px solid var(--ac-line)',
-                  borderRadius: '999px',
-                  fontSize: '12px',
-                  height: '28px',
-                  padding: '0 14px',
-                  background: 'transparent'
-                }}
-              >
-                投稿
-              </Button>
             </div>
           </div>
         </Card>
@@ -409,14 +389,6 @@ const ClipCard: React.FC<ClipCardProps> = ({
         footer={[
           <Button key="download" type="primary" icon={<DownloadOutlined />} onClick={handleDownloadWithTitle}>
             下载视频
-          </Button>,
-          <Button 
-            key="upload" 
-            type="default" 
-            icon={<UploadOutlined />} 
-            onClick={() => message.info('开发中，敬请期待', 3)}
-          >
-            投稿到B站
           </Button>
         ]}
         width={800}
@@ -487,19 +459,6 @@ const ClipCard: React.FC<ClipCardProps> = ({
           />
         )}
       </Modal>
-
-      {/* B站管理弹窗 */}
-      <BilibiliManager
-        visible={showBilibiliManager}
-        onClose={() => setShowBilibiliManager(false)}
-        projectId={projectId || ''}
-        clipIds={[clip.id]}
-        clipTitles={[clip.title || clip.generated_title || '视频片段']}
-        onUploadSuccess={() => {
-          // 投稿成功后可以刷新数据或显示提示
-          console.log('投稿成功')
-        }}
-      />
     </>
   )
 }

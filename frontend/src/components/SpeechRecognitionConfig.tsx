@@ -106,7 +106,7 @@ const SpeechRecognitionConfig: React.FC<SpeechRecognitionConfigProps> = () => {
         type="info"
         showIcon
         message="什么时候需要 Whisper？"
-        description="当导入的视频自带字幕（例如 B站 的 AI 字幕）时，会直接使用现成字幕，无需 Whisper。只有当视频没有字幕时，才需要本地 Whisper 来自动转写生成字幕。Whisper 为按需安装，装不装、装哪个模型都由你决定。"
+        description="当导入的视频自带字幕（或你上传了 .srt 字幕文件）时，会直接使用现成字幕，无需 Whisper。只有当视频没有字幕时，才需要本地 Whisper 来自动转写生成字幕。Whisper 为按需安装，装不装、装哪个模型都由你决定。"
       />
 
       {!supported && (

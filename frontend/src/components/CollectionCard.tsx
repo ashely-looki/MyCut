@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react'
-import { Card, Button, Tooltip, message } from 'antd'
-import { PlayCircleOutlined, EditOutlined, DownloadOutlined } from '@ant-design/icons'
+import { Card, Button, Tooltip } from 'antd'
+import { PlayCircleOutlined, DownloadOutlined } from '@ant-design/icons'
 import { Collection, Clip } from '../store/useProjectStore'
 import EditableCollectionTitle from './EditableCollectionTitle'
 import './CollectionCard.css'
@@ -296,23 +296,6 @@ const CollectionCard: React.FC<CollectionCardProps> = ({
               下载
             </Button>
           )}
-          <Button 
-            type="text" 
-            size="small"
-            icon={<EditOutlined />}
-            onClick={() => message.info('开发中，敬请期待', 3)}
-            style={{
-              color: 'var(--ac-sub)',
-              border: '1px solid var(--ac-line)',
-              borderRadius: '6px',
-              fontSize: '12px',
-              height: '28px',
-              padding: '0 12px',
-              background: 'transparent'
-            }}
-          >
-            投稿
-          </Button>
         </div>
       </div>
     </Card>

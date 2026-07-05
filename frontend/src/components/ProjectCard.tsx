@@ -248,8 +248,8 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onDelete, onRetry, o
   // 自动启动 pending 状态的项目（但不包括下载中的项目）。
   // 关键：每个项目最多只自动尝试一次，且失败时不弹 toast。
   // 之前这里把 isRetrying 放进依赖、又在 handleRetry 里翻转 isRetrying，
-  // 导致 effect 反复触发 → 对一个还没下载完的 B站项目疯狂 POST /process（返回
-  // 400 "Video file not found"）→ 满屏「重试失败」。下载完成后后端会自动启动
+  // 导致 effect 反复触发 → 对一个视频文件还没就绪的项目疯狂 POST /process（返回
+  // 400 "Video file not found"）→ 满屏「重试失败」。文件就绪后后端会自动启动
   // 流水线，所以这里只需做一次「尽力而为」的启动即可。
   useEffect(() => {
     if (
@@ -259,9 +259,9 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onDelete, onRetry, o
     ) {
       autoStartedProjectIds.add(project.id)
       // Best-effort, one-shot per project. Uploads (file already present) start
-      // processing; B站 imports whose download isn't done yet return 400 here —
-      // that's fine, the backend auto-starts the pipeline when the download
-      // completes. Silent + no onRetry so this never drives the parent's
+      // processing; projects whose video file isn't ready yet return 400 here —
+      // that's fine, the backend auto-starts the pipeline when the file is
+      // ready. Silent + no onRetry so this never drives the parent's
       // toast/reload path.
       handleRetry({ silent: true })
     }
