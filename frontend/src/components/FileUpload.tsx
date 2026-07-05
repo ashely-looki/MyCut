@@ -223,7 +223,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess, attachedScript
         right: '-50%',
         width: '200%',
         height: '200%',
-        background: 'radial-gradient(circle, rgba(79, 172, 254, 0.08) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(232, 113, 10, 0.08) 0%, transparent 70%)',
         pointerEvents: 'none'
       }} />
       
@@ -236,8 +236,8 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess, attachedScript
           padding: '24px 16px',
           textAlign: 'center',
           marginBottom: '16px',
-          background: isDragActive ? 'rgba(79, 172, 254, 0.15)' : 'var(--ac-line-2)',
-          border: `2px dashed ${isDragActive ? '#4facfe' : 'rgba(79, 172, 254, 0.3)'}`,
+          background: isDragActive ? 'rgba(232, 113, 10, 0.15)' : 'var(--ac-line-2)',
+          border: `2px dashed ${isDragActive ? '#E8710A' : 'rgba(232, 113, 10, 0.3)'}`,
           borderRadius: '16px',
           cursor: 'pointer',
           transition: 'all 0.3s ease',
@@ -250,17 +250,17 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess, attachedScript
           width: '48px',
           height: '48px',
           margin: '0 auto 12px',
-          background: isDragActive ? 'rgba(79, 172, 254, 0.3)' : 'rgba(79, 172, 254, 0.1)',
+          background: isDragActive ? 'rgba(232, 113, 10, 0.3)' : 'rgba(232, 113, 10, 0.1)',
           borderRadius: '50%',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           transition: 'all 0.3s ease',
-          border: '1px solid rgba(79, 172, 254, 0.2)'
+          border: '1px solid rgba(232, 113, 10, 0.2)'
         }}>
           <InboxOutlined style={{ 
             fontSize: '20px', 
-            color: isDragActive ? '#4facfe' : '#4facfe'
+            color: isDragActive ? '#E8710A' : '#E8710A'
           }} />
         </div>
         <div>
@@ -294,7 +294,7 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess, attachedScript
               borderRadius: '12px',
               fontSize: '14px',
               background: 'var(--ac-line-2)',
-              border: '1px solid rgba(79, 172, 254, 0.3)',
+              border: '1px solid rgba(232, 113, 10, 0.3)',
               color: '#ffffff'
             }}
           />
@@ -377,19 +377,19 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess, attachedScript
                 padding: '16px',
                 background: 'var(--ac-line-2)',
                 borderRadius: '12px',
-                border: '1px solid rgba(79, 172, 254, 0.2)',
+                border: '1px solid rgba(232, 113, 10, 0.2)',
                 backdropFilter: 'blur(10px)'
               }}>
                 <Space size="middle">
                   <div style={{
                     width: '36px',
                     height: '36px',
-                    background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                    background: 'linear-gradient(135deg, #E8710A 0%, #FF8C42 100%)',
                     borderRadius: '8px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    boxShadow: '0 4px 12px rgba(79, 172, 254, 0.3)'
+                    boxShadow: '0 4px 12px rgba(232, 113, 10, 0.3)'
                   }}>
                     <VideoCameraOutlined style={{ color: '#ffffff', fontSize: '16px' }} />
                   </div>
@@ -495,12 +495,12 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess, attachedScript
           padding: '20px',
           background: 'var(--ac-line-2)',
           borderRadius: '16px',
-          border: '1px solid rgba(79, 172, 254, 0.3)',
+          border: '1px solid rgba(232, 113, 10, 0.3)',
           backdropFilter: 'blur(10px)'
         }}>
           <div style={{ marginBottom: '12px' }}>
             <Text style={{ color: '#ffffff', fontWeight: 600, fontSize: '14px' }}>导入进度</Text>
-            <Text style={{ color: '#4facfe', float: 'right', fontWeight: 600, fontSize: '14px' }}>
+            <Text style={{ color: '#E8710A', float: 'right', fontWeight: 600, fontSize: '14px' }}>
               {uploadProgress}%
             </Text>
           </div>
@@ -508,8 +508,8 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess, attachedScript
             percent={uploadProgress} 
             status="active"
             strokeColor={{
-              '0%': '#4facfe',
-              '100%': '#00f2fe',
+              '0%': '#E8710A',
+              '100%': '#FF8C42',
             }}
             trailColor="var(--ac-line)"
             strokeWidth={6}
@@ -535,11 +535,11 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess, attachedScript
               height: '48px',
               padding: '0 32px',
               borderRadius: '24px',
-              background: uploading ? '#666666' : 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+              background: uploading ? '#666666' : 'linear-gradient(135deg, #E8710A 0%, #FF8C42 100%)',
               border: 'none',
               fontSize: '16px',
               fontWeight: 600,
-              boxShadow: uploading ? 'none' : '0 4px 20px rgba(79, 172, 254, 0.4)',
+              boxShadow: uploading ? 'none' : '0 4px 20px rgba(232, 113, 10, 0.4)',
               transition: 'all 0.3s ease'
             }}
           >
