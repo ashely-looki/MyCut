@@ -144,3 +144,6 @@ control/
 # my-clip-agent 本地新增
 .npm-cache/
 /data/
+
+# tsc 增量构建缓存
+*.tsbuildinfo
