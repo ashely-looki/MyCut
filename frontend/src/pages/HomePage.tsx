@@ -165,7 +165,7 @@ const HomePage: React.FC = () => {
                   width: '64px', height: '64px', borderRadius: '50%', background: 'var(--ac-line-2)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
-                  <SearchOutlined style={{ fontSize: '30px', color: 'var(--ac-accent)' }} />
+                  <SearchOutlined style={{ fontSize: '28px', color: 'var(--ac-accent)' }} />
                 </div>
                 <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--ac-ink)' }}>AI 查热点，选题就地出文案</div>
                 <div style={{ fontSize: '13px', color: 'var(--ac-sub)', textAlign: 'center', lineHeight: 1.6 }}>
