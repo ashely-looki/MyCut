@@ -147,7 +147,7 @@ const HomePage: React.FC = () => {
               <div style={{ fontSize: '13px', color: 'var(--ac-muted)', margin: '0 4px 14px', letterSpacing: '0.2px' }}>
                 AI 查热点，选题就地出文案
               </div>
-              <div style={{ background: 'var(--ac-card)', borderRadius: '16px', border: '1px solid var(--ac-line)', padding: '18px', boxShadow: 'var(--ac-shadow)' }}>
+              <div style={{ background: '#EEECE8', borderRadius: '16px', border: '1px solid var(--ac-line)', padding: '18px', boxShadow: 'var(--ac-shadow)' }}>
                 <HotspotPanel onUseForClip={(scriptJson) => {
                   setAttachedScript(scriptJson)
                   message.success('已关联文案，右侧上传对应素材即可按文案切片')

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Input, InputNumber, Select, Button, Spin, Empty, message } from 'antd'
+import { Input, InputNumber, Select, Button, Spin, message } from 'antd'
 import { SearchOutlined, BulbOutlined, FileTextOutlined, SaveOutlined, ScissorOutlined } from '@ant-design/icons'
 import TopicCard from './TopicCard'
 import { hotspotApi, scriptApi, TopicCard as TopicCardData, Outline, ScriptSegment } from '../services/api'
@@ -248,7 +248,10 @@ const HotspotPanel: React.FC<HotspotPanelProps> = ({ onUseForClip }) => {
           ))}
         </div>
       ) : (
-        <Empty description="输入领域，点「查热点」找选题" image={Empty.PRESENTED_IMAGE_SIMPLE} style={{ padding: '32px 0' }} />
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', padding: '48px 0' }}>
+          <SearchOutlined style={{ fontSize: '40px', color: 'var(--ac-muted)' }} />
+          <div style={{ fontSize: '14px', color: 'var(--ac-sub)' }}>AI 查热点，选题就地出文案</div>
+        </div>
       )}
     </div>
   )
