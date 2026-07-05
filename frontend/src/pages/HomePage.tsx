@@ -152,7 +152,7 @@ const HomePage: React.FC = () => {
               <div
                 onClick={() => navigate('/hotspots')}
                 style={{
-                  background: '#A8A59F', borderRadius: '16px', border: '1px solid var(--ac-line)',
+                  background: '#F7F7F7', borderRadius: '16px', border: '1px solid var(--ac-line)',
                   boxShadow: 'var(--ac-shadow)', cursor: 'pointer',
                   minHeight: '360px', display: 'flex', flexDirection: 'column',
                   alignItems: 'center', justifyContent: 'center', gap: '16px', padding: '24px',
@@ -193,7 +193,7 @@ const HomePage: React.FC = () => {
                 onMouseEnter={() => setUploadHovered(true)}
                 onMouseLeave={() => setUploadHovered(false)}
                 style={{
-                  background: '#A8A59F', borderRadius: '16px',
+                  background: '#F7F7F7', borderRadius: '16px',
                   border: uploadHovered ? '1px solid var(--ac-accent)' : '1px solid var(--ac-line)',
                   padding: '18px', boxShadow: 'var(--ac-shadow)',
                   minHeight: '360px', display: 'flex', flexDirection: 'column',
