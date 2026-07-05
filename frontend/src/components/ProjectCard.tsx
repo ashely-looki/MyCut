@@ -72,7 +72,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onDelete, onRetry, o
   // 获取分类信息
   const getCategoryInfo = (category?: string) => {
     const categoryMap: Record<string, { name: string; icon: string; color: string }> = {
-      'default': { name: '默认', icon: '🎬', color: '#4facfe' },
+      'default': { name: '默认', icon: '🎬', color: '#E8710A' },
       'knowledge': { name: '知识科普', icon: '📚', color: '#52c41a' },
       'business': { name: '商业财经', icon: '💼', color: '#faad14' },
       'opinion': { name: '观点评论', icon: '💭', color: '#722ed1' },
@@ -512,9 +512,9 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onDelete, onRetry, o
                             width: '20px',
                             height: '20px',
                             borderRadius: '3px',
-                            color: '#1890ff',
-                            border: '1px solid rgba(24, 144, 255, 0.5)',
-                            background: 'rgba(24, 144, 255, 0.1)',
+                            color: '#E8710A',
+                            border: '1px solid rgba(232, 113, 10, 0.5)',
+                            background: 'rgba(232, 113, 10, 0.1)',
                             padding: 0,
                             minWidth: '20px',
                             fontSize: '10px'

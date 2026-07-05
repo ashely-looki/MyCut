@@ -61,7 +61,7 @@ export const ProjectTaskManager: React.FC<ProjectTaskManagerProps> = ({
       case 'completed':
         return <CheckCircleOutlined style={{ color: '#52c41a' }} />
       case 'running':
-        return <ClockCircleOutlined style={{ color: '#1890ff' }} />
+        return <ClockCircleOutlined style={{ color: '#E8710A' }} />
       case 'failed':
         return <CloseCircleOutlined style={{ color: '#ff4d4f' }} />
       case 'pending':
@@ -192,7 +192,7 @@ export const ProjectTaskManager: React.FC<ProjectTaskManagerProps> = ({
           <Statistic
             title="活跃任务"
             value={activeTasks.length}
-            valueStyle={{ color: '#1890ff' }}
+            valueStyle={{ color: '#E8710A' }}
             prefix={<ClockCircleOutlined />}
           />
         </Col>

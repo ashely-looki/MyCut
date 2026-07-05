@@ -535,7 +535,7 @@ const SettingsPage: React.FC = () => {
             <Card title="B站账号管理" className="settings-card">
               <div style={{ textAlign: 'center', padding: '40px 20px' }}>
                 <div style={{ marginBottom: '24px' }}>
-                  <UserOutlined style={{ fontSize: '48px', color: '#1890ff', marginBottom: '16px' }} />
+                  <UserOutlined style={{ fontSize: '48px', color: '#E8710A', marginBottom: '16px' }} />
                   <Title level={3} style={{ color: 'var(--ac-ink)', margin: '0 0 8px 0' }}>
                     B站账号管理
                   </Title>
@@ -552,7 +552,7 @@ const SettingsPage: React.FC = () => {
                     onClick={() => message.info('开发中，敬请期待', 3)}
                     style={{
                       borderRadius: '8px',
-                      background: 'linear-gradient(45deg, #1890ff, #36cfc9)',
+                      background: 'linear-gradient(45deg, #E8710A, #36cfc9)',
                       border: 'none',
                       fontWeight: 500,
                       height: '48px',
@@ -575,7 +575,7 @@ const SettingsPage: React.FC = () => {
                       borderRadius: '8px',
                       border: '1px solid #404040'
                     }}>
-                      <Text strong style={{ color: '#1890ff' }}>多账号支持</Text>
+                      <Text strong style={{ color: '#E8710A' }}>多账号支持</Text>
                       <br />
                       <Text type="secondary" style={{ color: '#b0b0b0' }}>
                         支持添加多个B站账号，方便管理和切换
@@ -702,7 +702,7 @@ const AppSettings: React.FC = () => {
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-                  <PoweroffOutlined style={{ color: '#1890ff', marginRight: '8px' }} />
+                  <PoweroffOutlined style={{ color: '#E8710A', marginRight: '8px' }} />
                   <Text strong style={{ color: 'var(--ac-ink)' }}>开机自动启动</Text>
                 </div>
                 <Text type="secondary" style={{ color: '#b0b0b0' }}>

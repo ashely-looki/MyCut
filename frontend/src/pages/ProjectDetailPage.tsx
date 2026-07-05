@@ -374,7 +374,7 @@ const ProjectDetailPage: React.FC = () => {
                     buttonStyle="solid"
                     style={{
                       ['--ant-radio-button-bg' as string]: 'transparent',
-                      ['--ant-radio-button-checked-bg' as string]: '#1890ff',
+                      ['--ant-radio-button-checked-bg' as string]: '#E8710A',
                       ['--ant-radio-button-color' as string]: 'var(--ac-sub)',
                       ['--ant-radio-button-checked-color' as string]: '#ffffff'
                     }}
@@ -387,11 +387,11 @@ const ProjectDetailPage: React.FC = () => {
                          lineHeight: '30px',
                          padding: '0 16px',
                          background: sortBy === 'time' ? 'var(--ac-cta-bg)' : 'var(--ac-line)',
-                         border: sortBy === 'time' ? '1px solid #1890ff' : '1px solid var(--ac-line)',
+                         border: sortBy === 'time' ? '1px solid #E8710A' : '1px solid var(--ac-line)',
                          color: sortBy === 'time' ? '#ffffff' : 'var(--ac-sub)',
                          borderRadius: '6px 0 0 6px',
                          fontWeight: sortBy === 'time' ? 600 : 400,
-                         boxShadow: sortBy === 'time' ? '0 2px 8px rgba(24, 144, 255, 0.3)' : 'none',
+                         boxShadow: sortBy === 'time' ? '0 2px 8px rgba(232, 113, 10, 0.3)' : 'none',
                          transition: 'all 0.2s ease'
                        }}
                      >
@@ -405,12 +405,12 @@ const ProjectDetailPage: React.FC = () => {
                          lineHeight: '30px',
                          padding: '0 16px',
                          background: sortBy === 'score' ? 'var(--ac-cta-bg)' : 'var(--ac-line)',
-                         border: sortBy === 'score' ? '1px solid #1890ff' : '1px solid var(--ac-line)',
+                         border: sortBy === 'score' ? '1px solid #E8710A' : '1px solid var(--ac-line)',
                          borderLeft: 'none',
                          color: sortBy === 'score' ? '#ffffff' : 'var(--ac-sub)',
                          borderRadius: '0 6px 6px 0',
                          fontWeight: sortBy === 'score' ? 600 : 400,
-                         boxShadow: sortBy === 'score' ? '0 2px 8px rgba(24, 144, 255, 0.3)' : 'none',
+                         boxShadow: sortBy === 'score' ? '0 2px 8px rgba(232, 113, 10, 0.3)' : 'none',
                          transition: 'all 0.2s ease'
                        }}
                      >

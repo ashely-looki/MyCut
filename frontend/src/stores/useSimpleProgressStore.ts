@@ -175,7 +175,7 @@ export const STAGE_DISPLAY_NAMES: Record<string, string> = {
 
 // 阶段颜色映射
 export const STAGE_COLORS: Record<string, string> = {
-  'INGEST': '#1890ff',      // 蓝色
+  'INGEST': '#E8710A',      // 蓝色
   'SUBTITLE': '#52c41a',    // 绿色
   'ANALYZE': '#fa8c16',     // 橙色
   'HIGHLIGHT': '#722ed1',   // 紫色

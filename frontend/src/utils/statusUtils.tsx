@@ -50,7 +50,7 @@ export const getProjectStatusConfig = (status: ProjectStatus): ProjectStatusConf
   switch (status) {
     case 'pending':
       return {
-        color: '#1890ff',
+        color: '#E8710A',
         icon: ClockCircleOutlined,
         text: '等待中',
         badgeStatus: 'processing',
@@ -59,12 +59,12 @@ export const getProjectStatusConfig = (status: ProjectStatus): ProjectStatusConf
       }
     case 'processing':
       return {
-        color: '#1890ff',
+        color: '#E8710A',
         icon: LoadingOutlined,
         text: '处理中',
         badgeStatus: 'processing',
-        backgroundColor: 'rgba(24, 144, 255, 0.15)',
-        borderColor: 'rgba(24, 144, 255, 0.3)'
+        backgroundColor: 'rgba(232, 113, 10, 0.15)',
+        borderColor: 'rgba(232, 113, 10, 0.3)'
       }
     case 'completed':
       return {
@@ -103,14 +103,14 @@ export const getTaskStatusConfig = (status: TaskStatus): TaskStatusConfig => {
   switch (status) {
     case 'pending':
       return {
-        color: '#1890ff',
+        color: '#E8710A',
         icon: ClockCircleOutlined,
         text: '等待中',
         badgeStatus: 'processing'
       }
     case 'running':
       return {
-        color: '#1890ff',
+        color: '#E8710A',
         icon: PlayCircleOutlined,
         text: '执行中',
         badgeStatus: 'processing'
@@ -153,14 +153,14 @@ export const getUploadStatusConfig = (status: UploadStatus): UploadStatusConfig 
   switch (status) {
     case 'pending':
       return {
-        color: '#1890ff',
+        color: '#E8710A',
         icon: ClockCircleOutlined,
         text: '待处理',
         badgeStatus: 'processing'
       }
     case 'processing':
       return {
-        color: '#1890ff',
+        color: '#E8710A',
         icon: LoadingOutlined,
         text: '处理中',
         badgeStatus: 'processing'

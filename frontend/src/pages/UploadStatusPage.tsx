@@ -247,10 +247,10 @@ const UploadStatusPage: React.FC<UploadStatusPageProps> = () => {
         <Space size="small">
           <Button 
             type="link" 
-            icon={<EyeOutlined style={{ color: '#4facfe' }} />} 
+            icon={<EyeOutlined style={{ color: '#E8710A' }} />} 
             onClick={() => handleViewDetail(record)}
             size="small"
-            style={{ color: '#4facfe' }}
+            style={{ color: '#E8710A' }}
           >
             详情
           </Button>
@@ -263,9 +263,9 @@ const UploadStatusPage: React.FC<UploadStatusPageProps> = () => {
             >
               <Button 
                 type="link" 
-                icon={<RedoOutlined style={{ color: '#4facfe' }} />} 
+                icon={<RedoOutlined style={{ color: '#E8710A' }} />} 
                 size="small"
-                style={{ color: '#4facfe' }}
+                style={{ color: '#E8710A' }}
               >
                 重试
               </Button>
@@ -359,7 +359,7 @@ const UploadStatusPage: React.FC<UploadStatusPageProps> = () => {
             color: #ffffff !important;
           }
           .dark-table .ant-pagination .ant-pagination-item-active {
-            background: #1890ff !important;
+            background: #E8710A !important;
           }
           .dark-table .ant-pagination .ant-pagination-item-active a {
             color: #ffffff !important;
@@ -373,7 +373,7 @@ const UploadStatusPage: React.FC<UploadStatusPageProps> = () => {
           }
           /* 确保链接按钮文字可见 */
           .dark-table .ant-btn-link {
-            color: #4facfe !important;
+            color: #E8710A !important;
           }
           .dark-table .ant-btn-link:hover {
             color: #00a8ff !important;
@@ -393,7 +393,7 @@ const UploadStatusPage: React.FC<UploadStatusPageProps> = () => {
             color: #ffffff !important;
           }
           .dark-table .ant-tag-blue {
-            color: #4facfe !important;
+            color: #E8710A !important;
           }
           .dark-table .ant-tag-green {
             color: #52c41a !important;
@@ -415,7 +415,7 @@ const UploadStatusPage: React.FC<UploadStatusPageProps> = () => {
           }
           .dark-table .ant-pagination-prev:hover,
           .dark-table .ant-pagination-next:hover {
-            color: #4facfe !important;
+            color: #E8710A !important;
           }
           .dark-table .ant-pagination-options .ant-select-selector {
             color: #ffffff !important;
@@ -443,7 +443,7 @@ const UploadStatusPage: React.FC<UploadStatusPageProps> = () => {
             color: #ffffff !important;
           }
           .dark-modal .ant-modal-close:hover {
-            color: #4facfe !important;
+            color: #E8710A !important;
           }
         `}
       </style>
@@ -496,7 +496,7 @@ const UploadStatusPage: React.FC<UploadStatusPageProps> = () => {
               <Statistic 
                 title={<span style={{ color: '#ffffff' }}>进行中</span>} 
                 value={stats.processing + stats.pending} 
-                valueStyle={{ color: '#1890ff' }}
+                valueStyle={{ color: '#E8710A' }}
                 prefix={<PlayCircleOutlined />}
               />
             </Card>

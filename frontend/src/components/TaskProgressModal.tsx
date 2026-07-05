@@ -135,7 +135,7 @@ const TaskProgressModal: React.FC<TaskProgressModalProps> = ({
     }
     
     if (stepStatus === 'process') {
-      return <LoadingOutlined style={{ color: '#1890ff' }} />
+      return <LoadingOutlined style={{ color: '#E8710A' }} />
     }
     
     return null
@@ -145,7 +145,7 @@ const TaskProgressModal: React.FC<TaskProgressModalProps> = ({
     <Modal
       title={
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <LoadingOutlined style={{ color: '#1890ff' }} />
+          <LoadingOutlined style={{ color: '#E8710A' }} />
           <span>任务处理进度</span>
         </div>
       }
@@ -199,8 +199,8 @@ const TaskProgressModal: React.FC<TaskProgressModalProps> = ({
                 percent={Math.round((status.current_step / status.total_steps) * 100)}
                 status={status.status === 'error' ? 'exception' : 'active'}
                 strokeColor={{
-                  '0%': '#4facfe',
-                  '100%': '#00f2fe'
+                  '0%': '#E8710A',
+                  '100%': '#FF8C42'
                 }}
               />
             </div>
