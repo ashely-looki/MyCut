@@ -553,54 +553,8 @@ async def retry_processing(
                     logger.info(f"发现源URL: {source_url}，开始重新下载")
                     
                     # 根据URL类型选择下载方式
-                    if 'bilibili.com' in source_url:
-                        # B站视频重新下载
-                        from .bilibili import process_download_task, BilibiliDownloadRequest, BilibiliDownloadTask, download_tasks
-                        import uuid
-                        
-                        # 创建下载请求
-                        download_request = BilibiliDownloadRequest(
-                            url=source_url,
-                            project_name=project.name,
-                            video_category=project.project_metadata.get('category', 'general')
-                        )
-                        
-                        # 生成新的任务ID
-                        download_task_id = str(uuid.uuid4())
-                        
-                        # 创建任务记录
-                        task = BilibiliDownloadTask(
-                            id=download_task_id,
-                            url=source_url,
-                            project_name=project.name,
-                            video_category=project.project_metadata.get('category', 'general'),
-                            status="pending",
-                            progress=0.0,
-                            project_id=project_id,
-                            created_at=str(uuid.uuid1().time),
-                            updated_at=str(uuid.uuid1().time)
-                        )
-                        
-                        # 存储任务
-                        download_tasks[download_task_id] = task
-                        
-                        # 异步启动下载任务
-                        from .async_task_manager import task_manager
-                        await task_manager.create_safe_task(
-                            f"bilibili_redownload_{download_task_id}",
-                            process_download_task,
-                            download_task_id,
-                            download_request,
-                            project_id
-                        )
-                        
-                        return {
-                            "message": "视频文件不存在，已开始重新下载B站视频",
-                            "project_id": project_id,
-                            "download_task_id": download_task_id,
-                            "source_url": source_url
-                        }
-                    elif 'youtube.com' in source_url or 'youtu.be' in source_url:
+                    # 注：B站下载/上传已从本项目移除，此处不再支持 bilibili.com 源。
+                    if 'youtube.com' in source_url or 'youtu.be' in source_url:
                         # YouTube视频重新下载
                         from .youtube import process_youtube_download_task, YouTubeDownloadRequest
                         import uuid

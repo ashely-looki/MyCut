@@ -68,7 +68,7 @@ def create_app(mode: str = "web") -> FastAPI:
         logger.info(f"启动 AutoClip API 服务 (模式: {mode})...")
         
         # 导入所有模型以确保表被创建
-        from backend.models.bilibili import BilibiliAccount, UploadRecord
+        import backend.models  # noqa: F401  触发模型注册
         Base.metadata.create_all(bind=engine)
         logger.info("数据库表创建完成")
         

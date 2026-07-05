@@ -77,63 +77,18 @@ async def retry_download_only(
             raise HTTPException(status_code=404, detail="项目不存在")
         
         # 获取原始下载信息（从项目描述中提取）
+        # 注：B站下载已从本项目移除，仅保留 YouTube。
         description = project.description or ""
-        if "从B站下载:" in description:
-            # B站项目
-            url = description.replace("从B站下载:", "").strip()
-            return await retry_bilibili_download(project_id, url, browser, db)
-        elif "从YouTube下载:" in description:
+        if "从YouTube下载:" in description:
             # YouTube项目
             url = description.replace("从YouTube下载:", "").strip()
             return await retry_youtube_download(project_id, url, browser, db)
         else:
             raise HTTPException(status_code=400, detail="无法确定下载源")
-    
+
     except Exception as e:
         logger.error(f"重试下载失败: {e}")
         raise HTTPException(status_code=500, detail=f"重试下载失败: {str(e)}")
-
-async def retry_bilibili_download(
-    project_id: str, 
-    url: str, 
-    browser: Optional[str] = None,
-    db: Session = Depends(get_db)
-) -> Dict[str, Any]:
-    """重试B站下载"""
-    try:
-        # 导入B站下载相关模块
-        from .bilibili import process_download_task, BilibiliDownloadRequest
-        from .async_task_manager import task_manager
-        
-        # 创建下载请求
-        request = BilibiliDownloadRequest(
-            url=url,
-            project_name=db.query(Project).filter(Project.id == project_id).first().name,
-            video_category="default",
-            browser=browser
-        )
-        
-        # 生成新的下载任务ID
-        task_id = str(uuid.uuid4())
-        
-        # 启动下载任务
-        await task_manager.create_safe_task(
-            f"bilibili_retry_{task_id}",
-            process_download_task,
-            task_id,
-            request,
-            project_id
-        )
-        
-        return {
-            "success": True,
-            "message": "B站下载重试已启动",
-            "task_id": task_id
-        }
-    
-    except Exception as e:
-        logger.error(f"重试B站下载失败: {e}")
-        raise HTTPException(status_code=500, detail=f"重试B站下载失败: {str(e)}")
 
 async def retry_youtube_download(
     project_id: str, 
