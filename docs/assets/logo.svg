@@ -1,0 +1,23 @@
+<svg width="340" height="88" viewBox="0 0 340 88" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MyCut logo">
+  <!-- 图标：一段被“切开”的胶片切片 —— 左右两块沿橙色斜线错位，寓意 Cut -->
+  <g>
+    <!-- 左半块胶片（略上移） -->
+    <path d="M18 26 h22 v40 h-22 a8 8 0 0 1 -8 -8 v-24 a8 8 0 0 1 8 -8 z" stroke="#57534E" stroke-width="4" fill="none"/>
+    <!-- 右半块胶片（略下移，错位表现切开） -->
+    <path d="M46 30 h20 a8 8 0 0 1 8 8 v24 a8 8 0 0 1 -8 8 h-20 v-40 z" stroke="#57534E" stroke-width="4" fill="none"/>
+    <!-- 上下胶片齿孔（弱化色） -->
+    <rect x="20" y="20" width="6" height="6" rx="2" fill="#A8A59F"/>
+    <rect x="32" y="20" width="6" height="6" rx="2" fill="#A8A59F"/>
+    <rect x="52" y="24" width="6" height="6" rx="2" fill="#A8A59F"/>
+    <rect x="64" y="24" width="6" height="6" rx="2" fill="#A8A59F"/>
+    <rect x="20" y="66" width="6" height="6" rx="2" fill="#A8A59F"/>
+    <rect x="32" y="66" width="6" height="6" rx="2" fill="#A8A59F"/>
+    <rect x="52" y="70" width="6" height="6" rx="2" fill="#A8A59F"/>
+    <rect x="64" y="70" width="6" height="6" rx="2" fill="#A8A59F"/>
+    <!-- 橙色切割斜线：从两块之间穿过，明确“切”这一动作 -->
+    <line x1="49" y1="76" x2="43" y2="16" stroke="#E8710A" stroke-width="5" stroke-linecap="round"/>
+  </g>
+  <!-- 文字：My（暖灰无衬线）+ Cut（橙色斜体衬线），呼应 Header 的 My<em>Cut</em> -->
+  <text x="90" y="58" font-family="Geist, 'Helvetica Neue', Arial, sans-serif" font-size="40" font-weight="600" fill="#57534E" letter-spacing="0.5">My</text>
+  <text x="144" y="58" font-family="'Instrument Serif', Georgia, 'Times New Roman', serif" font-size="44" font-style="italic" fill="#E8710A" letter-spacing="0.5">Cut</text>
+</svg>

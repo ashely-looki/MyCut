@@ -1,6 +1,8 @@
 <div align="center">
 
-# MyCut — AI 视频剪辑 Agent
+<img src="docs/assets/logo.svg" alt="MyCut" width="300" />
+
+### AI 视频剪辑 Agent
 
 **查热点 → 生成大纲/文案 → 本地上传 → 自动切片 + 匹配字幕**
 
