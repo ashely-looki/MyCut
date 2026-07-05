@@ -65,72 +65,19 @@ def determine_retry_strategy(project: Project, force_redownload: bool = False) -
         return RetryStrategy.SMART_RETRY
 
 async def retry_download_only(
-    project_id: str, 
+    project_id: str,
     browser: Optional[str] = None,
     db: Session = Depends(get_db)
 ) -> Dict[str, Any]:
-    """仅重试下载"""
-    try:
-        # 获取项目信息
-        project = db.query(Project).filter(Project.id == project_id).first()
-        if not project:
-            raise HTTPException(status_code=404, detail="项目不存在")
-        
-        # 获取原始下载信息（从项目描述中提取）
-        # 注：B站下载已从本项目移除，仅保留 YouTube。
-        description = project.description or ""
-        if "从YouTube下载:" in description:
-            # YouTube项目
-            url = description.replace("从YouTube下载:", "").strip()
-            return await retry_youtube_download(project_id, url, browser, db)
-        else:
-            raise HTTPException(status_code=400, detail="无法确定下载源")
+    """仅重试下载。
 
-    except Exception as e:
-        logger.error(f"重试下载失败: {e}")
-        raise HTTPException(status_code=500, detail=f"重试下载失败: {str(e)}")
-
-async def retry_youtube_download(
-    project_id: str, 
-    url: str, 
-    browser: Optional[str] = None,
-    db: Session = Depends(get_db)
-) -> Dict[str, Any]:
-    """重试YouTube下载"""
-    try:
-        # 导入YouTube下载相关模块
-        from .youtube import process_youtube_download_task, YouTubeDownloadRequest
-        from .async_task_manager import task_manager
-        
-        # 创建下载请求
-        request = YouTubeDownloadRequest(
-            url=url,
-            project_name=db.query(Project).filter(Project.id == project_id).first().name,
-            video_category="default",
-            browser=browser
-        )
-        
-        # 生成新的下载任务ID
-        task_id = str(uuid.uuid4())
-        
-        # 启动下载任务
-        await task_manager.create_safe_task(
-            f"youtube_retry_{task_id}",
-            process_youtube_download_task,
-            task_id,
-            request,
-            project_id
-        )
-        
-        return {
-            "success": True,
-            "message": "YouTube下载重试已启动",
-            "task_id": task_id
-        }
-    
-    except Exception as e:
-        logger.error(f"重试YouTube下载失败: {e}")
-        raise HTTPException(status_code=500, detail=f"重试YouTube下载失败: {str(e)}")
+    注：B站 / YouTube 在线下载均已从本项目移除，所有项目只来自本地上传，
+    因此不存在“重新下载”这一操作。这里直接返回明确错误，引导用户重新上传。
+    """
+    raise HTTPException(
+        status_code=400,
+        detail="本项目仅支持本地上传，无在线下载源可重试；请重新上传视频文件。"
+    )
 
 async def retry_processing_only(
     project_id: str,

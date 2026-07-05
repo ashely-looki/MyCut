@@ -542,55 +542,15 @@ async def retry_processing(
         video_path = raw_dir / "input.mp4"  # 使用标准的input.mp4文件名
         srt_path = raw_dir / "input.srt"    # 使用标准的input.srt文件名
         
-        # 检查视频文件是否存在，如果不存在则尝试重新下载
+        # 检查视频文件是否存在。
+        # 注：B站 / YouTube 在线下载已从本项目移除，所有素材来自本地上传，
+        # 因此文件缺失时无法“重新下载”，直接提示用户重新上传。
         if not video_path.exists():
-            logger.warning(f"视频文件不存在: {video_path}，尝试重新下载")
-            
-            # 检查项目元数据中是否有源URL
-            if hasattr(project, 'project_metadata') and project.project_metadata:
-                source_url = project.project_metadata.get('source_url')
-                if source_url:
-                    logger.info(f"发现源URL: {source_url}，开始重新下载")
-                    
-                    # 根据URL类型选择下载方式
-                    # 注：B站下载/上传已从本项目移除，此处不再支持 bilibili.com 源。
-                    if 'youtube.com' in source_url or 'youtu.be' in source_url:
-                        # YouTube视频重新下载
-                        from .youtube import process_youtube_download_task, YouTubeDownloadRequest
-                        import uuid
-                        
-                        # 创建下载请求
-                        download_request = YouTubeDownloadRequest(
-                            url=source_url,
-                            project_name=project.name,
-                            video_category=project.project_metadata.get('category', 'general')
-                        )
-                        
-                        # 生成新的任务ID
-                        download_task_id = str(uuid.uuid4())
-                        
-                        # 异步启动下载任务
-                        from .async_task_manager import task_manager
-                        await task_manager.create_safe_task(
-                            f"youtube_redownload_{download_task_id}",
-                            process_youtube_download_task,
-                            download_task_id,
-                            download_request,
-                            project_id
-                        )
-                        
-                        return {
-                            "message": "视频文件不存在，已开始重新下载YouTube视频",
-                            "project_id": project_id,
-                            "download_task_id": download_task_id,
-                            "source_url": source_url
-                        }
-                    else:
-                        raise HTTPException(status_code=400, detail=f"不支持的视频源: {source_url}")
-                else:
-                    raise HTTPException(status_code=400, detail=f"视频文件不存在且没有源URL: {video_path}")
-            else:
-                raise HTTPException(status_code=400, detail=f"视频文件不存在且没有项目元数据: {video_path}")
+            logger.warning(f"视频文件不存在: {video_path}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"视频文件不存在，请重新上传视频文件: {video_path}"
+            )
         
         # 字幕文件是可选的
         srt_path_str = str(srt_path) if srt_path.exists() else None

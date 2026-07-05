@@ -563,31 +563,10 @@ export const bilibiliApi = {
     })
   },
 
-  // 解析YouTube视频信息
-  parseYouTubeVideoInfo: async (url: string, browser?: string): Promise<{success: boolean, video_info: BilibiliVideoInfo}> => {
-    const formData = new FormData()
-    formData.append('url', url)
-    if (browser) {
-      formData.append('browser', browser)
-    }
-    return api.post('/youtube/parse', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    })
-  },
-
   // 创建B站下载任务
   createDownloadTask: async (data: BilibiliDownloadRequest): Promise<BilibiliDownloadTask> => {
     const task = await api.post<unknown, BilibiliDownloadTask>('/bilibili/download', data)
     trackVideoImported({ source: 'url', fileType: 'bilibili' })
-    return task
-  },
-
-  // 创建YouTube下载任务
-  createYouTubeDownloadTask: async (data: BilibiliDownloadRequest): Promise<BilibiliDownloadTask> => {
-    const task = await api.post<unknown, BilibiliDownloadTask>('/youtube/download', data)
-    trackVideoImported({ source: 'url', fileType: 'youtube' })
     return task
   },
 
@@ -596,20 +575,11 @@ export const bilibiliApi = {
     return api.get(`/bilibili/tasks/${taskId}`)
   },
 
-  // 获取YouTube下载任务状态
-  getYouTubeTaskStatus: async (taskId: string): Promise<BilibiliDownloadTask> => {
-    return api.get(`/youtube/tasks/${taskId}`)
-  },
-
   // 获取所有下载任务
   getAllTasks: async (): Promise<BilibiliDownloadTask[]> => {
     return api.get('/bilibili/tasks')
-  },
-
-  // 获取所有YouTube下载任务
-  getAllYouTubeTasks: async (): Promise<BilibiliDownloadTask[]> => {
-    return api.get('/youtube/tasks')
   }
+  // 注：YouTube 在线下载接口已移除（parse/download/tasks）。
 }
 
 // 系统状态相关API

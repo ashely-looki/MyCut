@@ -17,7 +17,6 @@ from .tasks import router as tasks_router
 from .processing import router as processing_router
 # from .websocket import router as websocket_router  # 已禁用WebSocket系统
 from .files import router as files_router
-from .youtube import router as youtube_router
 from .speech_recognition import router as speech_recognition_router
 from .subtitle_editor import router as subtitle_editor_router
 from .progress import router as progress_router
@@ -37,7 +36,6 @@ api_router.include_router(tasks_router, prefix="/tasks", tags=["tasks"])
 api_router.include_router(processing_router, tags=["processing"])
 # api_router.include_router(websocket_router, tags=["websocket"])  # 已禁用WebSocket系统
 api_router.include_router(files_router, tags=["files"])
-api_router.include_router(youtube_router, prefix="/youtube", tags=["youtube"])
 api_router.include_router(speech_recognition_router, tags=["speech-recognition"])
 api_router.include_router(subtitle_editor_router, prefix="/subtitle-editor", tags=["subtitle-editor"])
 api_router.include_router(progress_router, prefix="/progress", tags=["progress"])
