@@ -18,42 +18,18 @@ const SettingsPage: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [showBilibiliManager, setShowBilibiliManager] = useState(false)
   const [currentProvider, setCurrentProvider] = useState<any>({})
-  const [selectedProvider, setSelectedProvider] = useState('dashscope')
+  const [selectedProvider, setSelectedProvider] = useState('deepseek')
   const [analyticsOn, setAnalyticsOn] = useState(isAnalyticsEnabled())
 
-  // 提供商配置
+  // 提供商配置 —— 本项目只用 DeepSeek
   const providerConfig = {
-    dashscope: {
-      name: '阿里通义千问',
+    deepseek: {
+      name: 'DeepSeek',
       icon: <RobotOutlined />,
-      color: '#1890ff',
-      description: '阿里云通义千问大模型服务',
-      apiKeyField: 'dashscope_api_key',
-      placeholder: '请输入通义千问API密钥'
-    },
-    openai: {
-      name: 'OpenAI',
-      icon: <RobotOutlined />,
-      color: '#52c41a',
-      description: 'OpenAI GPT系列模型',
-      apiKeyField: 'openai_api_key',
-      placeholder: '请输入OpenAI API密钥'
-    },
-    gemini: {
-      name: 'Google Gemini',
-      icon: <RobotOutlined />,
-      color: '#faad14',
-      description: 'Google Gemini大模型',
-      apiKeyField: 'gemini_api_key',
-      placeholder: '请输入Gemini API密钥'
-    },
-    siliconflow: {
-      name: '硅基流动',
-      icon: <RobotOutlined />,
-      color: '#722ed1',
-      description: '硅基流动模型服务',
-      apiKeyField: 'siliconflow_api_key',
-      placeholder: '请输入硅基流动API密钥'
+      color: '#4d6bfe',
+      description: 'DeepSeek 大模型服务（OpenAI 兼容）',
+      apiKeyField: 'deepseek_api_key',
+      placeholder: '请输入 DeepSeek API 密钥'
     }
   }
 
@@ -87,23 +63,18 @@ const SettingsPage: React.FC = () => {
         // 处理模型数据
         const modelsData = models.status === 'fulfilled' ? models.value.models : {}
         
-        // 处理提供商数据
+        // 处理提供商数据（本项目只用 DeepSeek）
         const providerData = provider.status === 'fulfilled'
           ? provider.value
-          : { available: false, provider: 'dashscope', display_name: '阿里通义千问', model: 'qwen-plus' }
-        const providerName = providerData.provider || 'dashscope'
+          : { available: false, provider: 'deepseek', display_name: 'DeepSeek', model: 'deepseek-chat' }
+        const providerName = providerData.provider || 'deepseek'
         setCurrentProvider(providerData)
-        
+
         // 将嵌套的settings结构转换为扁平结构
         const flatSettings = {
           llm_provider: providerName, // 使用实际的提供商
-          dashscope_api_key: settingsData.api?.api_keys?.dashscope || '',
-          openai_api_key: settingsData.api?.api_keys?.openai || '',
-          gemini_api_key: settingsData.api?.api_keys?.gemini || '',
-          siliconflow_api_key: settingsData.api?.api_keys?.siliconflow || '',
-          jimeng_access_key: settingsData.api?.api_keys?.jimeng_access || '',
-          jimeng_secret_key: settingsData.api?.api_keys?.jimeng_secret || '',
-          model_name: settingsData.api?.api_model || 'qwen-plus',
+          deepseek_api_key: settingsData.api?.api_keys?.deepseek || '',
+          model_name: settingsData.api?.api_model || 'deepseek-chat',
           chunk_size: settingsData.processing?.processing_chunk_size || 5000,
           min_score_threshold: settingsData.processing?.processing_min_score || 0.7,
           max_clips_per_collection: settingsData.processing?.processing_max_clips || 5
@@ -121,28 +92,23 @@ const SettingsPage: React.FC = () => {
         console.log('Web模式 - 使用默认配置')
         
         const flatSettings = {
-          llm_provider: 'dashscope',
-          dashscope_api_key: '',
-          openai_api_key: '',
-          gemini_api_key: '',
-          siliconflow_api_key: '',
-          jimeng_access_key: '',
-          jimeng_secret_key: '',
-          model_name: 'qwen-plus',
+          llm_provider: 'deepseek',
+          deepseek_api_key: '',
+          model_name: 'deepseek-chat',
           chunk_size: 5000,
           min_score_threshold: 0.7,
           max_clips_per_collection: 5
         }
-        
-        setSelectedProvider('dashscope')
+
+        setSelectedProvider('deepseek')
         form.setFieldsValue(flatSettings)
-        
+
         // 设置默认模型数据
         setCurrentProvider({
           available: false,
-          provider: 'dashscope',
-          display_name: '阿里通义千问',
-          model: 'qwen-plus'
+          provider: 'deepseek',
+          display_name: 'DeepSeek',
+          model: 'deepseek-chat'
         })
       }
     } catch (error) {
@@ -190,16 +156,12 @@ const SettingsPage: React.FC = () => {
           max_memory_usage: 2048
         },
         api: {
+          provider: values.llm_provider || "deepseek",
           api_keys: {
             // 只更新有值的API key，保持现有的值
-            dashscope: values.dashscope_api_key || existingApiKeys.dashscope || "",
-            openai: values.openai_api_key || existingApiKeys.openai || "",
-            gemini: values.gemini_api_key || existingApiKeys.gemini || "",
-            siliconflow: values.siliconflow_api_key || existingApiKeys.siliconflow || "",
-            jimeng_access: values.jimeng_access_key || existingApiKeys.jimeng_access || "",
-            jimeng_secret: values.jimeng_secret_key || existingApiKeys.jimeng_secret || ""
+            deepseek: values.deepseek_api_key || existingApiKeys.deepseek || ""
           },
-          api_model: values.model_name || "qwen-plus",
+          api_model: values.model_name || "deepseek-chat",
           api_max_tokens: 4096,
           api_timeout: 30
         },
@@ -281,8 +243,8 @@ const SettingsPage: React.FC = () => {
           <TabPane tab="AI 模型配置" key="api">
             <Card title="AI 模型配置" className="settings-card">
               <Alert
-                message="多模型提供商支持"
-                description="系统现在支持多个AI模型提供商，您可以根据需要选择不同的服务商和模型。"
+                message="使用 DeepSeek 模型"
+                description="本项目使用 DeepSeek 大模型（OpenAI 兼容），在下方填入 DeepSeek API Key 并选择模型即可。"
                 type="info"
                 showIcon
                 className="settings-alert"
@@ -294,8 +256,8 @@ const SettingsPage: React.FC = () => {
                 className="settings-form"
                 onFinish={handleSave}
                 initialValues={{
-                  llm_provider: 'dashscope',
-                  model_name: 'qwen-plus',
+                  llm_provider: 'deepseek',
+                  model_name: 'deepseek-chat',
                   chunk_size: 5000,
                   min_score_threshold: 0.7,
                   max_clips_per_collection: 5
@@ -363,54 +325,15 @@ const SettingsPage: React.FC = () => {
                 >
                   <Select
                     className="settings-input"
-                    placeholder="请输入或选择模型名称"
+                    placeholder="请选择或输入模型名称"
                     showSearch
                     allowClear
-                    mode="tags"
-                    dropdownRender={(menu) => (
-                      <div>
-                        {menu}
-                        <Divider style={{ margin: '8px 0' }} />
-                        <div style={{ padding: '0 8px 4px' }}>
-                          <Text type="secondary" style={{ fontSize: '12px' }}>
-                            常用模型列表（按供应商分类）
-                          </Text>
-                        </div>
-                      </div>
-                    )}
                   >
-                    {/* 通义千问模型 */}
-                    <Select.OptGroup label="通义千问 (Dashscope)">
-                      <Select.Option value="qwen-plus">qwen-plus (通义千问增强版)</Select.Option>
-                      <Select.Option value="qwen-turbo">qwen-turbo (通义千问标准版)</Select.Option>
-                      <Select.Option value="qwen-max">qwen-max (通义千问旗舰版)</Select.Option>
-                      <Select.Option value="qwen-long">qwen-long (通义千问长文本版)</Select.Option>
+                    {/* DeepSeek 模型 */}
+                    <Select.OptGroup label="DeepSeek">
+                      <Select.Option value="deepseek-chat">deepseek-chat (DeepSeek V3)</Select.Option>
+                      <Select.Option value="deepseek-reasoner">deepseek-reasoner (DeepSeek R1)</Select.Option>
                     </Select.OptGroup>
-                    
-                    {/* OpenAI模型 */}
-                    <Select.OptGroup label="OpenAI">
-                      <Select.Option value="gpt-4o">gpt-4o (GPT-4 Omni)</Select.Option>
-                      <Select.Option value="gpt-4o-mini">gpt-4o-mini (GPT-4 Omni Mini)</Select.Option>
-                      <Select.Option value="gpt-4-turbo">gpt-4-turbo (GPT-4 Turbo)</Select.Option>
-                      <Select.Option value="gpt-4">gpt-4 (GPT-4)</Select.Option>
-                      <Select.Option value="gpt-3.5-turbo">gpt-3.5-turbo (GPT-3.5 Turbo)</Select.Option>
-                    </Select.OptGroup>
-                    
-                    {/* Google Gemini模型 */}
-                    <Select.OptGroup label="Google Gemini">
-                      <Select.Option value="gemini-1.5-pro">gemini-1.5-pro (Gemini 1.5 Pro)</Select.Option>
-                      <Select.Option value="gemini-1.5-flash">gemini-1.5-flash (Gemini 1.5 Flash)</Select.Option>
-                      <Select.Option value="gemini-pro">gemini-pro (Gemini Pro)</Select.Option>
-                    </Select.OptGroup>
-                    
-                    {/* 硅基流动模型 */}
-                    <Select.OptGroup label="硅基流动 (SiliconFlow)">
-                      <Select.Option value="deepseek-chat">deepseek-chat (DeepSeek Chat)</Select.Option>
-                      <Select.Option value="deepseek-coder">deepseek-coder (DeepSeek Coder)</Select.Option>
-                      <Select.Option value="qwen-plus">qwen-plus (通义千问增强版)</Select.Option>
-                      <Select.Option value="qwen-turbo">qwen-turbo (通义千问标准版)</Select.Option>
-                    </Select.OptGroup>
-                    
                   </Select>
                 </Form.Item>
 
@@ -501,14 +424,12 @@ const SettingsPage: React.FC = () => {
               <Space direction="vertical" size="large" className="instructions-space">
                 <div className="instruction-item">
                   <Title level={5} className="instruction-title">
-                    <InfoCircleOutlined /> 1. 选择AI模型提供商
+                    <InfoCircleOutlined /> 1. 配置 DeepSeek
                   </Title>
                   <Paragraph className="instruction-text">
-                    系统支持多个AI模型提供商：
-                    <br />• <Text strong>阿里通义千问</Text>：访问阿里云控制台获取API密钥
-                    <br />• <Text strong>OpenAI</Text>：访问 platform.openai.com 获取API密钥
-                    <br />• <Text strong>Google Gemini</Text>：访问 ai.google.dev 获取API密钥
-                    <br />• <Text strong>硅基流动</Text>：访问 docs.siliconflow.cn 获取API密钥
+                    本项目使用 <Text strong>DeepSeek</Text> 大模型：
+                    <br />• 访问 platform.deepseek.com 创建并获取 API 密钥
+                    <br />• 模型可选 <Text strong>deepseek-chat</Text>（V3，通用）或 <Text strong>deepseek-reasoner</Text>（R1，推理）
                   </Paragraph>
                 </div>
                 

@@ -318,14 +318,14 @@ async def test_api_connection(request: TestApiRequest):
             }
         
         # 根据提供商进行格式验证
-        if request.provider in ["dashscope", "openai"]:
+        if request.provider in ["dashscope", "openai", "deepseek"]:
             if not request.api_key.startswith("sk-"):
                 return {
                     "success": False,
                     "error": f"{request.provider} API Key格式可能不正确，通常以'sk-'开头",
                     "provider": request.provider
                 }
-        
+
         # 根据提供商测试API连接
         if request.provider == "dashscope":
             from backend.core.llm_providers import DashScopeProvider
@@ -339,6 +339,9 @@ async def test_api_connection(request: TestApiRequest):
         elif request.provider == "siliconflow":
             from backend.core.llm_providers import SiliconFlowProvider
             provider_instance = SiliconFlowProvider(api_key=request.api_key)
+        elif request.provider == "deepseek":
+            from backend.core.llm_providers import DeepSeekProvider
+            provider_instance = DeepSeekProvider(api_key=request.api_key)
         else:
             raise HTTPException(status_code=400, detail="不支持的API提供商")
         
