@@ -622,6 +622,49 @@ export const hotspotApi = {
   }
 }
 
+// 大纲 / 文案相关类型（阶段2）
+export interface OutlineSection {
+  point: string
+  detail: string
+}
+
+export interface Outline {
+  hook: string
+  sections: OutlineSection[]
+  cta: string
+}
+
+export interface ScriptSegment {
+  index: number
+  role: 'hook' | 'body' | 'cta'
+  narration: string
+  visual: string
+  est_seconds: number
+}
+
+// 大纲 / 文案 API（阶段2）
+export const scriptApi = {
+  // 选题 → 大纲
+  generateOutline: (data: {
+    title: string
+    angle?: string
+    target_audience?: string
+    keywords?: string[]
+    duration?: number
+  }): Promise<Outline> => {
+    return api.post('/scripts/outline', data)
+  },
+  // 大纲 → 分镜文案
+  generateScript: (data: {
+    title: string
+    outline: Outline
+    style?: string
+    duration?: number
+  }): Promise<ScriptSegment[]> => {
+    return api.post('/scripts/script', data)
+  }
+}
+
 export interface WhisperRuntimeStatus {
   status: 'unknown' | 'not_installed' | 'installing' | 'installed' | 'error'
   progress: number

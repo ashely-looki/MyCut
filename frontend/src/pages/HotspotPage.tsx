@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Layout, Typography, Input, InputNumber, Button, Spin, Empty, message } from 'antd'
 import { SearchOutlined } from '@ant-design/icons'
 import TopicCard from '../components/TopicCard'
@@ -12,6 +13,7 @@ const { Title, Text } = Typography
  * 无 Bing key 时后端会降级为纯 LLM 生成（页面会提示未联网校验）。
  */
 const HotspotPage: React.FC = () => {
+  const navigate = useNavigate()
   const [domain, setDomain] = useState('')
   const [keywords, setKeywords] = useState('')
   const [count, setCount] = useState(5)
@@ -38,8 +40,8 @@ const HotspotPage: React.FC = () => {
   }
 
   const handleUse = (topic: TopicCardData) => {
-    // 阶段2 将跳转到文案编辑页；当前先提示
-    message.info(`已选中选题：${topic.title}（文案生成将在阶段2接入）`)
+    // 带上选题跳到文案编辑页
+    navigate('/script', { state: { topic } })
   }
 
   return (
