@@ -1,0 +1,146 @@
+# 日志文件
+logs/
+*.log
+backend.log
+celery.log
+frontend/frontend.log
+
+# Python缓存
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# 虚拟环境
+venv/
+env/
+.venv/
+venv_*/
+
+# 视频和媒体文件
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.wmv
+*.flv
+*.webm
+*.m4v
+*.3gp
+*.mp3
+*.wav
+*.flac
+*.aac
+*.ogg
+*.wma
+
+# 压缩文件
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# 模型文件
+*.pt
+*.ckpt
+*.pth
+*.h5
+*.pkl
+*.joblib
+
+# 数据库文件
+*.db
+*.sqlite
+*.sqlite3
+data/autoclip.db
+data/progress.db
+data/*.json
+data/*.port
+
+# 项目数据目录（包含用户上传的视频和生成的文件）
+data/projects/
+data/uploads/
+data/temp/
+data/output/
+data/backups/
+data/cache/
+backend/data/
+
+# 前端依赖与构建产物
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Rust / Tauri 构建产物
+target/
+src-tauri/target/
+src-tauri/gen/
+
+# Python / 打包产物
+build/
+dist/
+releases/
+*.toc
+*.pkg
+*.dmg
+backend/autoclip-backend.spec
+src-tauri/resources/backend/
+src-tauri/resources/ffmpeg/
+src-tauri/resources/python/
+src-tauri/resources/ffmpeg-unified/
+src-tauri/resources/requirements.txt
+src-tauri/resources/autoclip-backend/
+
+# 系统文件
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 环境变量文件
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.backup
+.env.*.backup
+
+# 本地归档与备份（仅本地保留，不入仓）
+cleanup_backup/
+archive_local/
+local_backups/
+
+# 进程ID文件
+*.pid
+
+# Redis数据文件
+dump.rdb
+control/
+
+# 临时文件
+*.tmp
+*.temp
+*.bak
+.gstack/
+
+# my-clip-agent 本地新增
+.npm-cache/
+/data/
