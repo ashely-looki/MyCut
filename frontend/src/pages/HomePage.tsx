@@ -8,9 +8,9 @@ import {
   message 
 } from 'antd'
 import { useNavigate, useLocation } from 'react-router-dom'
+import { SearchOutlined } from '@ant-design/icons'
 import ProjectCard from '../components/ProjectCard'
 import FileUpload from '../components/FileUpload'
-import HotspotPanel from '../components/HotspotPanel'
 
 import { projectApi } from '../services/api'
 import { useSimpleProgressStore } from '../stores/useSimpleProgressStore'
@@ -142,16 +142,33 @@ const HomePage: React.FC = () => {
             gap: '24px',
             alignItems: 'start',
           }}>
-            {/* 左：热点选题 + 就地生成文案 */}
+            {/* 左：查热点入口卡片（点进去是完整的查热点→大纲→文案→保存流程） */}
             <div>
               <div style={{ fontSize: '13px', color: 'var(--ac-muted)', margin: '0 4px 14px', letterSpacing: '0.2px' }}>
-                AI 查热点，选题就地出文案
+                找选题
               </div>
-              <div style={{ background: '#EEECE8', borderRadius: '16px', border: '1px solid var(--ac-line)', padding: '18px', boxShadow: 'var(--ac-shadow)' }}>
-                <HotspotPanel onUseForClip={(scriptJson) => {
-                  setAttachedScript(scriptJson)
-                  message.success('已关联文案，右侧上传对应素材即可按文案切片')
-                }} />
+              <div
+                onClick={() => navigate('/hotspots')}
+                style={{
+                  background: '#EEECE8', borderRadius: '16px', border: '1px solid var(--ac-line)',
+                  boxShadow: 'var(--ac-shadow)', cursor: 'pointer',
+                  minHeight: '360px', display: 'flex', flexDirection: 'column',
+                  alignItems: 'center', justifyContent: 'center', gap: '16px', padding: '24px',
+                  transition: 'border-color .2s ease',
+                }}
+                onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--ac-accent)')}
+                onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--ac-line)')}
+              >
+                <div style={{
+                  width: '64px', height: '64px', borderRadius: '50%', background: 'var(--ac-card)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <SearchOutlined style={{ fontSize: '30px', color: 'var(--ac-accent)' }} />
+                </div>
+                <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--ac-ink)' }}>AI 查热点，选题就地出文案</div>
+                <div style={{ fontSize: '13px', color: 'var(--ac-sub)', textAlign: 'center', lineHeight: 1.6 }}>
+                  输入领域 → 查热点选题 → 生成大纲和文案 → 保存到文案库
+                </div>
               </div>
             </div>
 
