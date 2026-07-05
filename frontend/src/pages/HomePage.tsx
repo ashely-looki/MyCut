@@ -8,7 +8,7 @@ import {
   message 
 } from 'antd'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { SearchOutlined } from '@ant-design/icons'
+import { SearchOutlined, PlusOutlined } from '@ant-design/icons'
 import ProjectCard from '../components/ProjectCard'
 import FileUpload from '../components/FileUpload'
 
@@ -29,6 +29,8 @@ const HomePage: React.FC = () => {
   const [attachedScript, setAttachedScript] = useState<string | undefined>(initialAttached)
   const { projects, setProjects, deleteProject, loading, setLoading } = useProjectStore()
   const [statusFilter, setStatusFilter] = useState<string>('all')
+  // 右侧上传卡片：默认收起显示加号入口，hover 就地展开完整上传区
+  const [uploadHovered, setUploadHovered] = useState(false)
 
   // 使用项目轮询Hook
   useProjectPolling({
@@ -187,11 +189,35 @@ const HomePage: React.FC = () => {
                   <a onClick={() => setAttachedScript(undefined)} style={{ marginLeft: 'auto', color: 'var(--ac-muted)', cursor: 'pointer', fontSize: '12px' }}>取消关联</a>
                 </div>
               )}
-              <div style={{ background: 'var(--ac-card)', borderRadius: '16px', border: '1px solid var(--ac-line)', padding: '18px', boxShadow: 'var(--ac-shadow)' }}>
-                <FileUpload attachedScript={attachedScript} onUploadSuccess={async () => {
-                  await loadProjects()
-                  message.success(attachedScript ? '选题驱动项目已创建，正在按文案切片…' : '项目创建成功，正在处理中...')
-                }} />
+              <div
+                onMouseEnter={() => setUploadHovered(true)}
+                onMouseLeave={() => setUploadHovered(false)}
+                style={{
+                  background: 'var(--ac-card)', borderRadius: '16px',
+                  border: uploadHovered ? '1px solid var(--ac-accent)' : '1px solid var(--ac-line)',
+                  padding: '18px', boxShadow: 'var(--ac-shadow)',
+                  minHeight: '360px', display: 'flex', flexDirection: 'column',
+                  justifyContent: 'center', transition: 'border-color .2s ease',
+                }}
+              >
+                {uploadHovered ? (
+                  <FileUpload attachedScript={attachedScript} onUploadSuccess={async () => {
+                    await loadProjects()
+                    message.success(attachedScript ? '选题驱动项目已创建，正在按文案切片…' : '项目创建成功，正在处理中...')
+                  }} />
+                ) : (
+                  /* 收起态：加号入口 */
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+                    <div style={{
+                      width: '64px', height: '64px', borderRadius: '50%', background: 'var(--ac-line-2)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <PlusOutlined style={{ fontSize: '28px', color: 'var(--ac-accent)' }} />
+                    </div>
+                    <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--ac-ink)' }}>上传本地视频，AI 自动剪辑</div>
+                    <div style={{ fontSize: '13px', color: 'var(--ac-muted)' }}>把鼠标移到这里开始上传</div>
+                  </div>
+                )}
               </div>
             </div>
           </div>
