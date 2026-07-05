@@ -87,7 +87,7 @@ const Header: React.FC = () => {
             background: 'var(--ac-card)',
           }}
         >
-          文案
+          文案库
         </Button>
         <Button
           type="text"
