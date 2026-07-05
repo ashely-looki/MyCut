@@ -69,6 +69,7 @@ class LLMManager:
             "openai_api_key": "",
             "gemini_api_key": "",
             "siliconflow_api_key": "",
+            "deepseek_api_key": "",
             "model_name": "qwen-plus",
             "chunk_size": 5000,
             "min_score_threshold": 0.7,
@@ -88,8 +89,11 @@ class LLMManager:
                             "openai_api_key": api_keys.get("openai", ""),
                             "gemini_api_key": api_keys.get("gemini", ""),
                             "siliconflow_api_key": api_keys.get("siliconflow", ""),
+                            "deepseek_api_key": api_keys.get("deepseek", ""),
                             "model_name": saved_settings["api"].get("api_model", "qwen-plus")
                         })
+                        if saved_settings["api"].get("provider"):
+                            default_settings["llm_provider"] = saved_settings["api"]["provider"]
                     else:
                         # 处理旧的配置格式（直接平铺）
                         default_settings.update(saved_settings)
@@ -138,8 +142,9 @@ class LLMManager:
             ProviderType.OPENAI: "openai_api_key",
             ProviderType.GEMINI: "gemini_api_key",
             ProviderType.SILICONFLOW: "siliconflow_api_key",
+            ProviderType.DEEPSEEK: "deepseek_api_key",
         }
-        
+
         key_name = key_mapping.get(provider_type)
         if key_name:
             return self.settings.get(key_name, "")
@@ -166,8 +171,9 @@ class LLMManager:
                 ProviderType.OPENAI: "openai_api_key",
                 ProviderType.GEMINI: "gemini_api_key",
                 ProviderType.SILICONFLOW: "siliconflow_api_key",
+                ProviderType.DEEPSEEK: "deepseek_api_key",
             }
-            
+
             key_name = key_mapping.get(provider_type)
             if key_name:
                 provider_settings[key_name] = api_key

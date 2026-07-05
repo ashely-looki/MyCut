@@ -6,7 +6,6 @@
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
-from sqlalchemy.pool import StaticPool
 from typing import Generator
 from backend.models.base import Base
 
@@ -27,14 +26,22 @@ if DATABASE_URL == "sqlite:///autoclip.db":
 
 # 创建数据库引擎
 if "sqlite" in DATABASE_URL:
-    # SQLite配置
+    # SQLite 配置
+    #
+    # 注意：原来用的是 StaticPool —— 它在整个进程里只维护「一条」共享连接。
+    # 桌面模式下任务在后台线程执行（DesktopAwareTask），多个线程的 Session
+    # 会抢占这条唯一连接，事务状态互相污染，导致
+    # 「sqlite3.OperationalError: cannot commit - no transaction is active」。
+    #
+    # 对「文件型」SQLite + 多线程，正确做法是让每个线程各拿自己的连接：
+    # 用默认的 QueuePool（不显式指定 poolclass），配合 check_same_thread=False。
+    # StaticPool 只适合 :memory: 这种必须共享单连接的场景。
     engine = create_engine(
         DATABASE_URL,
         connect_args={
             "check_same_thread": False,
             "timeout": 30
         },
-        poolclass=StaticPool,
         pool_pre_ping=True,
         echo=False  # 设置为True可以看到SQL语句
     )

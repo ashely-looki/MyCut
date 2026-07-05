@@ -19,6 +19,7 @@ class ProviderType(Enum):
     OPENAI = "openai"        # OpenAI
     GEMINI = "gemini"        # Google Gemini
     SILICONFLOW = "siliconflow"  # 硅基流动
+    DEEPSEEK = "deepseek"    # DeepSeek（OpenAI 兼容）
 
 @dataclass
 class ModelInfo:
@@ -405,6 +406,83 @@ class GeminiProvider(LLMProvider):
             )
         ]
 
+class DeepSeekProvider(LLMProvider):
+    """DeepSeek 提供商（OpenAI 兼容 API）。
+
+    DeepSeek 的接口与 OpenAI 完全兼容，只是 base_url 不同，因此直接复用
+    openai SDK，指定 base_url=https://api.deepseek.com 即可。
+    默认模型 deepseek-chat（V3），也可用 deepseek-reasoner（R1）。
+    """
+
+    def __init__(self, api_key: str, model_name: str = "deepseek-chat", **kwargs):
+        super().__init__(api_key, model_name, **kwargs)
+        self.base_url = kwargs.get("base_url", "https://api.deepseek.com")
+        try:
+            import openai
+            self.client = openai.OpenAI(api_key=api_key, base_url=self.base_url)
+        except ImportError:
+            raise ImportError("请安装openai: pip install openai")
+
+    def call(self, prompt: str, input_data: Any = None, **kwargs) -> LLMResponse:
+        """调用DeepSeek API（OpenAI 兼容）"""
+        try:
+            full_input = self._build_full_input(prompt, input_data)
+
+            response = self.client.chat.completions.create(
+                model=self.model_name,
+                messages=[{"role": "user", "content": full_input}],
+                **kwargs
+            )
+
+            content = response.choices[0].message.content
+            usage = {
+                "prompt_tokens": response.usage.prompt_tokens,
+                "completion_tokens": response.usage.completion_tokens,
+                "total_tokens": response.usage.total_tokens
+            } if response.usage else None
+
+            return LLMResponse(
+                content=content,
+                usage=usage,
+                model=self.model_name,
+                finish_reason=response.choices[0].finish_reason
+            )
+
+        except Exception as e:
+            logger.error(f"DeepSeek调用失败: {str(e)}")
+            raise
+
+    def test_connection(self) -> bool:
+        """测试DeepSeek连接"""
+        try:
+            if not self.api_key or len(self.api_key.strip()) < 10:
+                logger.error("DeepSeek API Key为空或过短")
+                return False
+            response = self.call("测试", max_tokens=1)
+            return bool(response and response.content is not None)
+        except Exception as e:
+            logger.error(f"DeepSeek连接测试失败: {e}")
+            return False
+
+    def get_available_models(self) -> List[ModelInfo]:
+        """获取DeepSeek可用模型"""
+        return [
+            ModelInfo(
+                name="deepseek-chat",
+                display_name="DeepSeek-V3 (chat)",
+                provider=ProviderType.DEEPSEEK,
+                max_tokens=8192,
+                description="DeepSeek V3 通用对话模型"
+            ),
+            ModelInfo(
+                name="deepseek-reasoner",
+                display_name="DeepSeek-R1 (reasoner)",
+                provider=ProviderType.DEEPSEEK,
+                max_tokens=8192,
+                description="DeepSeek R1 推理模型"
+            ),
+        ]
+
 class SiliconFlowProvider(LLMProvider):
     """硅基流动提供商"""
     
@@ -509,6 +587,7 @@ class LLMProviderFactory:
         ProviderType.OPENAI: OpenAIProvider,
         ProviderType.GEMINI: GeminiProvider,
         ProviderType.SILICONFLOW: SiliconFlowProvider,
+        ProviderType.DEEPSEEK: DeepSeekProvider,
     }
     
     @classmethod
