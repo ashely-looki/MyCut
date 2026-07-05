@@ -1,10 +1,9 @@
 import { useEffect } from 'react'
-import { Routes, Route, useLocation } from 'react-router-dom'
+import { Routes, Route, useLocation, Navigate } from 'react-router-dom'
 import { Layout } from 'antd'
 import HomePage from './pages/HomePage'
 import ProjectDetailPage from './pages/ProjectDetailPage'
 import SettingsPage from './pages/SettingsPage'
-import HotspotPage from './pages/HotspotPage'
 import ScriptEditorPage from './pages/ScriptEditorPage'
 import ScriptLibraryPage from './pages/ScriptLibraryPage'
 import Header from './components/Header'
@@ -30,7 +29,8 @@ function App() {
       <Content>
         <Routes>
           <Route path="/" element={<HomePage />} />
-          <Route path="/hotspots" element={<HotspotPage />} />
+          {/* 热点已并入首页，旧链接重定向 */}
+          <Route path="/hotspots" element={<Navigate to="/" replace />} />
           <Route path="/scripts" element={<ScriptLibraryPage />} />
           <Route path="/script" element={<ScriptEditorPage />} />
           <Route path="/project/:id" element={<ProjectDetailPage />} />

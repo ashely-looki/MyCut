@@ -10,6 +10,7 @@ import {
 import { useNavigate, useLocation } from 'react-router-dom'
 import ProjectCard from '../components/ProjectCard'
 import FileUpload from '../components/FileUpload'
+import HotspotPanel from '../components/HotspotPanel'
 
 import { projectApi } from '../services/api'
 import { useSimpleProgressStore } from '../stores/useSimpleProgressStore'
@@ -23,8 +24,9 @@ const { Option } = Select
 const HomePage: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
-  // 阶段3：从文案页带过来的关联文案（选题驱动模式）
-  const attachedScript = (location.state as { attachedScript?: string } | null)?.attachedScript
+  // 关联文案（选题驱动模式）：可来自文案库「用它剪视频」(router state)，也可由本页热点面板就地生成后设置
+  const initialAttached = (location.state as { attachedScript?: string } | null)?.attachedScript
+  const [attachedScript, setAttachedScript] = useState<string | undefined>(initialAttached)
   const { projects, setProjects, deleteProject, loading, setLoading } = useProjectStore()
   const [statusFilter, setStatusFilter] = useState<string>('all')
 
@@ -131,42 +133,48 @@ const HomePage: React.FC = () => {
     }}>
       <Content style={{ padding: '40px 56px 56px', position: 'relative' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative' }}>
-          {/* 文件上传区域 */}
-          <div style={{ 
-            marginBottom: '48px',
+          {/* 主操作区：热点选题（左） + 上传视频（右） 并排 */}
+          <div style={{
             marginTop: '20px',
-            display: 'flex',
-            justifyContent: 'center'
+            marginBottom: '48px',
+            display: 'grid',
+            gridTemplateColumns: 'minmax(360px, 6fr) minmax(360px, 5fr)',
+            gap: '24px',
+            alignItems: 'start',
           }}>
-            <div style={{ width: '100%', maxWidth: '820px' }}>
+            {/* 左：热点选题 + 就地生成文案 */}
+            <div>
               <div style={{ fontSize: '13px', color: 'var(--ac-muted)', margin: '0 4px 14px', letterSpacing: '0.2px' }}>
-                {attachedScript ? '选题驱动模式：上传素材，切片将偏向匹配你的文案要点' : '上传本地视频，AI 自动切片'}
+                AI 查热点，选题就地出文案
               </div>
-              {/* 阶段3：带文案（选题驱动）时的提示条 */}
+              <div style={{ background: 'var(--ac-card)', borderRadius: '16px', border: '1px solid var(--ac-line)', padding: '18px', boxShadow: 'var(--ac-shadow)' }}>
+                <HotspotPanel onUseForClip={(scriptJson) => {
+                  setAttachedScript(scriptJson)
+                  message.success('已关联文案，右侧上传对应素材即可按文案切片')
+                }} />
+              </div>
+            </div>
+
+            {/* 右：上传视频 */}
+            <div>
+              <div style={{ fontSize: '13px', color: 'var(--ac-muted)', margin: '0 4px 14px', letterSpacing: '0.2px' }}>
+                {attachedScript ? '选题驱动模式：上传素材，切片偏向匹配文案要点' : '上传本地视频，AI 自动切片'}
+              </div>
               {attachedScript && (
                 <div style={{
                   fontSize: '13px', color: 'var(--ac-ink)', background: 'var(--ac-line-2)',
                   border: '1px solid var(--ac-line)', borderRadius: '12px',
-                  padding: '10px 14px', margin: '0 4px 14px',
+                  padding: '10px 14px', margin: '0 4px 14px', display: 'flex', alignItems: 'center', gap: '8px',
                 }}>
                   🎯 已关联文案：{(() => { try { return JSON.parse(attachedScript).title || '(未命名)' } catch { return '(文案)' } })()}
+                  <a onClick={() => setAttachedScript(undefined)} style={{ marginLeft: 'auto', color: 'var(--ac-muted)', cursor: 'pointer', fontSize: '12px' }}>取消关联</a>
                 </div>
               )}
-              <div style={{
-                background: 'var(--ac-card)',
-                borderRadius: '16px',
-                border: '1px solid var(--ac-line)',
-                padding: '18px',
-                boxShadow: 'var(--ac-shadow)'
-              }}>
-              {/* 本地文件上传（B站/链接导入已移除） */}
-              <div>
+              <div style={{ background: 'var(--ac-card)', borderRadius: '16px', border: '1px solid var(--ac-line)', padding: '18px', boxShadow: 'var(--ac-shadow)' }}>
                 <FileUpload attachedScript={attachedScript} onUploadSuccess={async () => {
-                  // 处理完成后刷新项目列表
                   await loadProjects()
                   message.success(attachedScript ? '选题驱动项目已创建，正在按文案切片…' : '项目创建成功，正在处理中...')
                 }} />
-              </div>
               </div>
             </div>
           </div>
