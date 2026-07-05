@@ -162,7 +162,7 @@ const HomePage: React.FC = () => {
                 onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--ac-line)')}
               >
                 <div style={{
-                  width: '64px', height: '64px', borderRadius: '50%', background: 'var(--ac-card)',
+                  width: '64px', height: '64px', borderRadius: '50%', background: 'var(--ac-line-2)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   <SearchOutlined style={{ fontSize: '30px', color: 'var(--ac-accent)' }} />
