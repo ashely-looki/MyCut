@@ -5,16 +5,23 @@ POST /api/v1/scripts/script   —— 大纲 → 分镜文案
 """
 
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
+from sqlalchemy.orm import Session
 
+from ...core.database import get_db
 from ...services.script_service import get_script_service
+from ...services.script_repo import ScriptRepo
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+def get_script_repo(db: Session = Depends(get_db)) -> ScriptRepo:
+    return ScriptRepo(db)
 
 
 class OutlineSection(BaseModel):
@@ -88,3 +95,71 @@ async def create_script(request: ScriptRequest) -> List[Dict[str, Any]]:
     except Exception as e:  # noqa: BLE001
         logger.exception("生成文案失败")
         raise HTTPException(status_code=500, detail=f"生成文案失败: {e}")
+
+
+# ============ 文案持久化（保存/列表/详情/更新/删除）============
+
+class SavedScriptPayload(BaseModel):
+    title: str = Field(..., description="选题标题")
+    domain: Optional[str] = None
+    angle: Optional[str] = None
+    target_audience: Optional[str] = None
+    keywords: List[str] = []
+    outline: Optional[Outline] = None
+    segments: List[Segment] = []
+    style: Optional[str] = None
+    est_duration: Optional[int] = None
+
+
+def _payload_to_dict(p: SavedScriptPayload) -> Dict[str, Any]:
+    return {
+        "title": p.title,
+        "domain": p.domain,
+        "angle": p.angle,
+        "target_audience": p.target_audience,
+        "keywords": p.keywords,
+        "outline": p.outline.model_dump() if p.outline else None,
+        "segments": [s.model_dump() for s in p.segments],
+        "style": p.style,
+        "est_duration": p.est_duration,
+    }
+
+
+@router.post("")
+async def save_script(payload: SavedScriptPayload, repo: ScriptRepo = Depends(get_script_repo)) -> Dict[str, Any]:
+    """保存一篇文案。"""
+    if not payload.title.strip():
+        raise HTTPException(status_code=400, detail="title 不能为空")
+    return repo.create(_payload_to_dict(payload))
+
+
+@router.get("")
+async def list_scripts(repo: ScriptRepo = Depends(get_script_repo)) -> List[Dict[str, Any]]:
+    """我的文案列表（按更新时间倒序）。"""
+    return repo.list()
+
+
+@router.get("/{script_id}")
+async def get_script(script_id: str, repo: ScriptRepo = Depends(get_script_repo)) -> Dict[str, Any]:
+    """文案详情。"""
+    s = repo.get(script_id)
+    if not s:
+        raise HTTPException(status_code=404, detail="文案不存在")
+    return s
+
+
+@router.put("/{script_id}")
+async def update_script(script_id: str, payload: SavedScriptPayload, repo: ScriptRepo = Depends(get_script_repo)) -> Dict[str, Any]:
+    """更新文案。"""
+    s = repo.update(script_id, _payload_to_dict(payload))
+    if not s:
+        raise HTTPException(status_code=404, detail="文案不存在")
+    return s
+
+
+@router.delete("/{script_id}")
+async def delete_script(script_id: str, repo: ScriptRepo = Depends(get_script_repo)) -> Dict[str, str]:
+    """删除文案。"""
+    if not repo.delete(script_id):
+        raise HTTPException(status_code=404, detail="文案不存在")
+    return {"message": "已删除", "id": script_id}

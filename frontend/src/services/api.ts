@@ -646,7 +646,26 @@ export interface ScriptSegment {
   est_seconds: number
 }
 
-// 大纲 / 文案 API（阶段2）
+// 已保存的文案（持久化）
+export interface SavedScript {
+  id: string
+  title: string
+  domain?: string
+  angle?: string
+  target_audience?: string
+  keywords: string[]
+  outline: Outline
+  segments: ScriptSegment[]
+  style?: string
+  est_duration?: number
+  created_at?: string
+  updated_at?: string
+}
+
+// 保存/更新文案时提交的结构
+export type ScriptPayload = Omit<SavedScript, 'id' | 'created_at' | 'updated_at'>
+
+// 大纲 / 文案 API（阶段2 生成 + 持久化 CRUD）
 export const scriptApi = {
   // 选题 → 大纲
   generateOutline: (data: {
@@ -666,7 +685,14 @@ export const scriptApi = {
     duration?: number
   }): Promise<ScriptSegment[]> => {
     return api.post('/scripts/script', data)
-  }
+  },
+
+  // —— 持久化 CRUD ——
+  save: (data: ScriptPayload): Promise<SavedScript> => api.post('/scripts', data),
+  list: (): Promise<SavedScript[]> => api.get('/scripts'),
+  get: (id: string): Promise<SavedScript> => api.get(`/scripts/${id}`),
+  update: (id: string, data: ScriptPayload): Promise<SavedScript> => api.put(`/scripts/${id}`, data),
+  remove: (id: string): Promise<{ message: string; id: string }> => api.delete(`/scripts/${id}`),
 }
 
 export interface WhisperRuntimeStatus {

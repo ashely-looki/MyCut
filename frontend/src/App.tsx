@@ -6,6 +6,7 @@ import ProjectDetailPage from './pages/ProjectDetailPage'
 import SettingsPage from './pages/SettingsPage'
 import HotspotPage from './pages/HotspotPage'
 import ScriptEditorPage from './pages/ScriptEditorPage'
+import ScriptLibraryPage from './pages/ScriptLibraryPage'
 import Header from './components/Header'
 import { trackPageview } from './analytics/posthog'
 
@@ -30,6 +31,7 @@ function App() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/hotspots" element={<HotspotPage />} />
+          <Route path="/scripts" element={<ScriptLibraryPage />} />
           <Route path="/script" element={<ScriptEditorPage />} />
           <Route path="/project/:id" element={<ProjectDetailPage />} />
           <Route path="/settings" element={<SettingsPage />} />

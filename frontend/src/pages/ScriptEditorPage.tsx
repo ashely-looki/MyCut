@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Layout, Typography, Input, InputNumber, Select, Button, Spin, message, Empty } from 'antd'
-import { ArrowLeftOutlined, BulbOutlined, FileTextOutlined, ScissorOutlined } from '@ant-design/icons'
-import { scriptApi, Outline, ScriptSegment, TopicCard } from '../services/api'
+import { ArrowLeftOutlined, BulbOutlined, FileTextOutlined, ScissorOutlined, SaveOutlined } from '@ant-design/icons'
+import { scriptApi, Outline, ScriptSegment, TopicCard, SavedScript } from '../services/api'
 
 const { Content } = Layout
 const { Title } = Typography
@@ -18,19 +18,23 @@ const ROLE_LABEL: Record<string, string> = { hook: '开头钩子', body: '正文
 const ScriptEditorPage: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
-  const passedTopic = (location.state as { topic?: TopicCard } | null)?.topic
+  const state = location.state as { topic?: TopicCard; savedScript?: SavedScript } | null
+  const passedTopic = state?.topic
+  const savedScript = state?.savedScript  // 从「我的文案」列表打开已存文案
 
-  const [title, setTitle] = useState(passedTopic?.title || '')
-  const [angle, setAngle] = useState(passedTopic?.angle || '')
-  const [audience, setAudience] = useState(passedTopic?.target_audience || '')
-  const [keywords] = useState<string[]>(passedTopic?.keywords || [])
-  const [duration, setDuration] = useState(60)
-  const [style, setStyle] = useState('干货')
+  const [scriptId, setScriptId] = useState<string | null>(savedScript?.id || null)
+  const [title, setTitle] = useState(savedScript?.title || passedTopic?.title || '')
+  const [angle, setAngle] = useState(savedScript?.angle || passedTopic?.angle || '')
+  const [audience, setAudience] = useState(savedScript?.target_audience || passedTopic?.target_audience || '')
+  const [keywords] = useState<string[]>(savedScript?.keywords || passedTopic?.keywords || [])
+  const [duration, setDuration] = useState(savedScript?.est_duration || 60)
+  const [style, setStyle] = useState(savedScript?.style || '干货')
 
-  const [outline, setOutline] = useState<Outline | null>(null)
-  const [segments, setSegments] = useState<ScriptSegment[]>([])
+  const [outline, setOutline] = useState<Outline | null>(savedScript?.outline || null)
+  const [segments, setSegments] = useState<ScriptSegment[]>(savedScript?.segments || [])
   const [loadingOutline, setLoadingOutline] = useState(false)
   const [loadingScript, setLoadingScript] = useState(false)
+  const [saving, setSaving] = useState(false)
 
   const handleGenerateOutline = async () => {
     if (!title.trim()) {
@@ -81,6 +85,46 @@ const ScriptEditorPage: React.FC = () => {
     setSegments((prev) => prev.map((s, idx) => (idx === i ? { ...s, [field]: v } : s)))
   }
 
+  // 组装当前文案为可保存/传递的结构
+  const buildPayload = () => ({
+    title: title.trim(),
+    angle,
+    target_audience: audience,
+    keywords,
+    outline: outline || { hook: '', sections: [], cta: '' },
+    segments,
+    style,
+    est_duration: duration,
+  })
+
+  // 保存文案到「我的文案」（首次 create，之后 update）
+  const handleSave = async () => {
+    if (!title.trim()) {
+      message.warning('请填写选题标题')
+      return
+    }
+    if (!outline) {
+      message.warning('请先生成大纲再保存')
+      return
+    }
+    setSaving(true)
+    try {
+      const payload = buildPayload()
+      if (scriptId) {
+        await scriptApi.update(scriptId, payload)
+        message.success('已更新')
+      } else {
+        const created = await scriptApi.save(payload)
+        setScriptId(created.id)
+        message.success('已保存到「我的文案」')
+      }
+    } catch (e: any) {
+      message.error(e?.response?.data?.detail || '保存失败')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   // 带着文案去首页上传视频（选题驱动切片）
   const handleUseForClip = () => {
     if (!outline) {
@@ -115,11 +159,27 @@ const ScriptEditorPage: React.FC = () => {
             </Title>
             <Button
               type="text"
+              icon={<SaveOutlined />}
+              onClick={handleSave}
+              loading={saving}
+              disabled={!outline}
+              style={{
+                marginLeft: 'auto',
+                height: '36px',
+                borderRadius: '999px',
+                border: '1px solid var(--ac-line)',
+                background: 'var(--ac-card)',
+                color: outline ? 'var(--ac-ink)' : 'var(--ac-muted)',
+              }}
+            >
+              {scriptId ? '更新' : '保存文案'}
+            </Button>
+            <Button
+              type="text"
               icon={<ScissorOutlined />}
               onClick={handleUseForClip}
               disabled={segments.length === 0}
               style={{
-                marginLeft: 'auto',
                 height: '36px',
                 borderRadius: '999px',
                 border: '1px solid var(--ac-line)',

@@ -7,6 +7,7 @@ from .project import Project
 from .clip import Clip
 from .collection import Collection
 from .task import Task, TaskStatus, TaskType
+from .script import Script
 
 __all__ = [
     "Base",
@@ -17,4 +18,5 @@ __all__ = [
     "Task",
     "TaskStatus",
     "TaskType",
+    "Script",
 ]
