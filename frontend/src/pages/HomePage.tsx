@@ -152,7 +152,7 @@ const HomePage: React.FC = () => {
               <div
                 onClick={() => navigate('/hotspots')}
                 style={{
-                  background: '#F7F7F7', borderRadius: '16px', border: '1px solid var(--ac-line)',
+                  background: 'var(--ac-card)', borderRadius: '16px', border: '1px solid var(--ac-line)',
                   boxShadow: 'var(--ac-shadow)', cursor: 'pointer',
                   minHeight: '360px', display: 'flex', flexDirection: 'column',
                   alignItems: 'center', justifyContent: 'center', gap: '16px', padding: '24px',
@@ -162,7 +162,7 @@ const HomePage: React.FC = () => {
                 onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--ac-line)')}
               >
                 <div style={{
-                  width: '64px', height: '64px', borderRadius: '50%', background: 'var(--ac-line-2)',
+                  width: '64px', height: '64px', borderRadius: '50%', background: 'var(--ac-thumb)',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}>
                   <SearchOutlined style={{ fontSize: '28px', color: 'var(--ac-accent)' }} />
@@ -193,7 +193,7 @@ const HomePage: React.FC = () => {
                 onMouseEnter={() => setUploadHovered(true)}
                 onMouseLeave={() => setUploadHovered(false)}
                 style={{
-                  background: '#F7F7F7', borderRadius: '16px',
+                  background: 'var(--ac-card)', borderRadius: '16px',
                   border: uploadHovered ? '1px solid var(--ac-accent)' : '1px solid var(--ac-line)',
                   padding: '18px', boxShadow: 'var(--ac-shadow)',
                   minHeight: '360px', display: 'flex', flexDirection: 'column',
@@ -209,7 +209,7 @@ const HomePage: React.FC = () => {
                   /* 收起态：加号入口 */
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
                     <div style={{
-                      width: '64px', height: '64px', borderRadius: '50%', background: 'var(--ac-line-2)',
+                      width: '64px', height: '64px', borderRadius: '50%', background: 'var(--ac-thumb)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                     }}>
                       <PlusOutlined style={{ fontSize: '28px', color: 'var(--ac-accent)' }} />
