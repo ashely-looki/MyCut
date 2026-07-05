@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@500&family=Noto+Sans+SC:wght@400;500&display=swap');
 
-/* ===== AutoClip · Calm Premium design tokens (see DESIGN.md) ===== */
+/* ===== MyCut · Calm Premium design tokens (see DESIGN.md) ===== */
 :root{
   --ac-bg:#F6F5F3; --ac-card:#FFFFFF; --ac-ink:#1A1A19; --ac-sub:#6E6B66; --ac-muted:#A8A59F;
   --ac-line:#EBE9E4; --ac-line-2:#F0EEEA; --ac-accent:#E8710A; --ac-thumb:#EEECE8;

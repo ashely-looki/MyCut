@@ -114,7 +114,7 @@ const FirstRunWizard: React.FC<FirstRunWizardProps> = ({ onComplete }) => {
       }
       
       // 配置保存完成，直接进入工具首页
-      message.success('配置完成!欢迎使用AutoClip')
+      message.success('配置完成!欢迎使用MyCut')
       onComplete()
     } catch (error) {
       console.error('配置保存失败:', error)
@@ -177,7 +177,7 @@ const FirstRunWizard: React.FC<FirstRunWizardProps> = ({ onComplete }) => {
       
       const settings = {
         basic: {
-          app_name: "AutoClip Desktop",
+          app_name: "MyCut Desktop",
           app_version: "1.0.0",
           debug_mode: false,
           auto_start: true
@@ -398,9 +398,9 @@ const FirstRunWizard: React.FC<FirstRunWizardProps> = ({ onComplete }) => {
     }}>
       {/* 头部标题区域 - 更紧凑 */}
       <div style={{ textAlign: 'center', marginBottom: '24px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-        <img src="/favicon.png" alt="AutoClip" style={{ width: 40, height: 40, marginBottom: '8px', display: 'block' }} />
+        <img src="/favicon.png" alt="MyCut" style={{ width: 40, height: 40, marginBottom: '8px', display: 'block' }} />
         <Title level={2} style={{ color: '#1890ff', marginBottom: '8px' }}>
-          欢迎使用 AutoClip
+          欢迎使用 MyCut
         </Title>
         <Text type="secondary" style={{ fontSize: '14px' }}>
           让我们快速配置您的AI视频切片工具

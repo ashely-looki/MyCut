@@ -39,7 +39,7 @@ async def create_example_project(
     try:
         # 检查是否已存在示例项目
         project_repo = ProjectRepository(db)
-        existing_project = project_repo.get_by_name("AutoClip 示例项目")
+        existing_project = project_repo.get_by_name("MyCut 示例项目")
         if existing_project:
             return {
                 "success": True,
@@ -162,7 +162,7 @@ async def delete_example_project(
     
     try:
         project_repo = ProjectRepository(db)
-        example_project = project_repo.get_by_name("AutoClip 示例项目")
+        example_project = project_repo.get_by_name("MyCut 示例项目")
         
         if not example_project:
             return {

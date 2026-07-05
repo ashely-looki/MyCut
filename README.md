@@ -1,6 +1,6 @@
-# AutoClip - AI视频智能切片系统
+# MyCut - AI视频智能切片系统
 
-![AutoClip Logo](https://img.shields.io/badge/AutoClip-AI%20Video%20Processing-blue?style=for-the-badge&logo=video)
+![MyCut Logo](https://img.shields.io/badge/MyCut-AI%20Video%20Processing-blue?style=for-the-badge&logo=video)
 
 ## 基于AI的智能视频切片处理系统
 
@@ -24,7 +24,7 @@
 
 ## 🎯 项目简介
 
-AutoClip是一个基于AI的智能视频切片处理系统，能够自动从YouTube、B站等平台下载视频，通过AI分析提取精彩片段，并智能生成合集。系统采用现代化的前后端分离架构，提供直观的Web界面和强大的后端处理能力。
+MyCut是一个基于AI的智能视频切片处理系统，能够自动从YouTube、B站等平台下载视频，通过AI分析提取精彩片段，并智能生成合集。系统采用现代化的前后端分离架构，提供直观的Web界面和强大的后端处理能力。
 
 **联系方式**: [christine_zhouye@163.com](mailto:christine_zhouye@163.com)
 
@@ -598,7 +598,7 @@ docker-compose -f docker-compose.dev.yml logs -f
 sudo nano /etc/systemd/system/autoclip.service
 
 [Unit]
-Description=AutoClip Video Processing System
+Description=MyCut Video Processing System
 After=network.target redis.service
 
 [Service]
@@ -870,6 +870,6 @@ A:
 
 [![Star History Chart](https://api.star-history.com/svg?repos=zhouxiaoka/autoclip&type=Date)](https://star-history.com/#zhouxiaoka/autoclip&Date)
 
-Made with ❤️ by AutoClip Team
+Made with ❤️ by MyCut Team
 
 ⭐ 如果觉得有用，请给个Star支持一下！

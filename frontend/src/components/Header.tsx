@@ -37,9 +37,9 @@ const Header: React.FC = () => {
         <span
           style={{
             fontFamily: 'var(--ac-font-serif)',
-            fontSize: '26px',
+            fontSize: '30px',
             color: 'var(--ac-ink)',
-            letterSpacing: '0.3px',
+            letterSpacing: '1px',
           }}
         >
           My<em style={{ fontStyle: 'italic' }}>Cut</em>

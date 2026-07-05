@@ -1,3 +1,3 @@
 """
-AutoClip FastAPI Application Package
+MyCut FastAPI Application Package
 """ 

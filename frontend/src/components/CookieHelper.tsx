@@ -191,7 +191,7 @@ const CookieHelper: React.FC<CookieHelperProps> = ({ visible, onClose }) => {
             </Paragraph>
             <Divider />
             <Paragraph type="secondary">
-              复制的Cookie字符串可以直接粘贴到AutoClip的Cookie输入框中
+              复制的Cookie字符串可以直接粘贴到MyCut的Cookie输入框中
             </Paragraph>
             <Alert
               message="重要提示"

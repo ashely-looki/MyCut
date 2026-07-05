@@ -40,7 +40,7 @@ def create_app(mode: str = "web") -> FastAPI:
     
     # 创建 FastAPI 应用
     app = FastAPI(
-        title="AutoClip API",
+        title="MyCut API",
         description="AI视频切片处理API",
         version="1.0.0",
         docs_url="/docs",
@@ -65,7 +65,7 @@ def create_app(mode: str = "web") -> FastAPI:
     # 启动事件
     @app.on_event("startup")
     async def startup_event():
-        logger.info(f"启动 AutoClip API 服务 (模式: {mode})...")
+        logger.info(f"启动 MyCut API 服务 (模式: {mode})...")
         
         # 导入所有模型以确保表被创建
         import backend.models  # noqa: F401  触发模型注册
@@ -91,7 +91,7 @@ def create_app(mode: str = "web") -> FastAPI:
     # 关闭事件
     @app.on_event("shutdown")
     async def shutdown_event():
-        logger.info("正在关闭 AutoClip API 服务...")
+        logger.info("正在关闭 MyCut API 服务...")
         logger.info("WebSocket 网关服务已禁用")
     
     # 注册路由

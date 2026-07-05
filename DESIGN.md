@@ -1,6 +1,6 @@
-# Design System — AutoClip
+# Design System — MyCut
 
-> AutoClip 的设计唯一标准。做任何 UI/视觉决策前先读这里。
+> MyCut 的设计唯一标准。做任何 UI/视觉决策前先读这里。
 > 方向：**克制专业 / Calm Premium**（参考 Dia Browser）。安静、精确、留白多、几乎全单色，
 > 只用一个克制的橙做强调。给"认真做内容的人"用，不是玩具风、不是冷黑科技风。
 
@@ -64,7 +64,7 @@
 
 sans + serif 混排是高级感来源：衬线只用于**拉丁品牌时刻**（wordmark、大数字），中文与 UI 一律干净无衬线。
 
-- **品牌/衬线（仅拉丁）**：`Instrument Serif`（含 italic）。用于 `AutoClip` wordmark、大号英文数字等点睛处。
+- **品牌/衬线（仅拉丁）**：`Instrument Serif`（含 italic）。用于 `MyCut` wordmark、大号英文数字等点睛处。
 - **中文**：`PingFang SC`（mac 原生、最克制）优先，跨平台回退 `Noto Sans SC`。
 - **UI / 正文（拉丁）**：`Geist`（400/500/600）。**不用 Inter/Roboto**。
 - **数据 / 数字 / 时间码**：`Geist Mono`（tabular）。

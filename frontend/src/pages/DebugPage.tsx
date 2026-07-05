@@ -160,7 +160,7 @@ const DebugPage: React.FC = () => {
 
       const testSettings = {
         basic: {
-          app_name: "AutoClip Desktop",
+          app_name: "MyCut Desktop",
           app_version: "1.0.0",
           debug_mode: false,
           auto_start: true
@@ -228,7 +228,7 @@ const DebugPage: React.FC = () => {
       <Content style={{ padding: '24px' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto' }}>
           <Title level={2}>
-            <BugOutlined /> AutoClip 调试页面
+            <BugOutlined /> MyCut 调试页面
           </Title>
           
           <Paragraph>

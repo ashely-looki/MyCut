@@ -1,3 +1,3 @@
 """
-Core configuration and utilities for AutoClip backend.
+Core configuration and utilities for MyCut backend.
 """ 
