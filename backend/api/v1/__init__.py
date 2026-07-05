@@ -25,6 +25,7 @@ from .debug import router as debug_router
 from .simple_progress import router as simple_progress_router
 # from .environment import router as environment_router  # 文件不存在，暂时注释
 from .settings import router as settings_router
+from .hotspots import router as hotspots_router
 # B站上传/投稿/队列/账号相关路由已移除（不在本项目范围内）
 
 # 注册所有路由
@@ -44,5 +45,6 @@ api_router.include_router(debug_router, tags=["debug"])
 api_router.include_router(simple_progress_router, tags=["simple-progress"])
 # api_router.include_router(environment_router, tags=["environment"])  # 文件不存在，暂时注释
 api_router.include_router(settings_router, tags=["settings"])
+api_router.include_router(hotspots_router, prefix="/hotspots", tags=["hotspots"])
 
 __all__ = ["api_router"]

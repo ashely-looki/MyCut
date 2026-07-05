@@ -595,6 +595,33 @@ export const systemApi = {
   }
 }
 
+// 热点选题相关类型
+export interface TopicCard {
+  id: string
+  title: string
+  angle: string
+  why_hot: string
+  target_audience: string
+  keywords: string[]
+  heat_score: number
+  sources: string[]
+}
+
+export interface HotspotSearchResult {
+  topics: TopicCard[]
+  searched: boolean
+  search_available: boolean
+  query: string
+}
+
+// 热点选题 API（阶段1）
+export const hotspotApi = {
+  // 联网查热点 + AI 归纳选题卡片
+  search: (data: { domain: string; keywords?: string; count?: number }): Promise<HotspotSearchResult> => {
+    return api.post('/hotspots/search', data)
+  }
+}
+
 export interface WhisperRuntimeStatus {
   status: 'unknown' | 'not_installed' | 'installing' | 'installed' | 'error'
   progress: number

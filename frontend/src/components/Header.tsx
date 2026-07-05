@@ -1,6 +1,6 @@
 import React from 'react'
 import { Layout, Button } from 'antd'
-import { SettingOutlined, ArrowLeftOutlined, BulbOutlined, MoonOutlined } from '@ant-design/icons'
+import { SettingOutlined, ArrowLeftOutlined, BulbOutlined, MoonOutlined, FireOutlined } from '@ant-design/icons'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 
@@ -74,6 +74,21 @@ const Header: React.FC = () => {
             background: 'var(--ac-card)',
           }}
         />
+        <Button
+          type="text"
+          icon={<FireOutlined />}
+          onClick={() => navigate('/hotspots')}
+          style={{
+            color: location.pathname === '/hotspots' ? 'var(--ac-accent)' : 'var(--ac-sub)',
+            border: '1px solid var(--ac-line)',
+            borderRadius: '999px',
+            height: '36px',
+            padding: '0 16px',
+            background: 'var(--ac-card)',
+          }}
+        >
+          热点
+        </Button>
         <Button
           type="text"
           icon={<SettingOutlined />}

@@ -4,6 +4,7 @@ import { Layout } from 'antd'
 import HomePage from './pages/HomePage'
 import ProjectDetailPage from './pages/ProjectDetailPage'
 import SettingsPage from './pages/SettingsPage'
+import HotspotPage from './pages/HotspotPage'
 import Header from './components/Header'
 import { trackPageview } from './analytics/posthog'
 
@@ -27,6 +28,7 @@ function App() {
       <Content>
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/hotspots" element={<HotspotPage />} />
           <Route path="/project/:id" element={<ProjectDetailPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
