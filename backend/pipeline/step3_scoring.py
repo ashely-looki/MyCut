@@ -18,10 +18,13 @@ logger = logging.getLogger(__name__)
 class ClipScorer:
     """内容评分器"""
     
-    def __init__(self, prompt_files: Dict = None):
+    def __init__(self, prompt_files: Dict = None, script_hints: Optional[Dict] = None):
         self.llm_client = LLMClient()
         self.text_processor = TextProcessor()
-        
+
+        # 阶段3：可选的文案对齐提示（选题驱动模式）。为 None 时行为与原来完全一致。
+        self.script_hints = script_hints
+
         # 加载提示词
         prompt_files_to_use = prompt_files if prompt_files is not None else PROMPT_FILES
         with open(prompt_files_to_use['recommendation'], 'r', encoding='utf-8') as f:
@@ -84,14 +87,29 @@ class ClipScorer:
             # 输入给LLM的数据不需要包含所有字段，只给必要的
             input_for_llm = [
                 {
-                    "outline": clip.get('outline'), 
+                    "outline": clip.get('outline'),
                     "content": clip.get('content'),
                     "start_time": clip.get('start_time'),
                     "end_time": clip.get('end_time'),
                 } for clip in clips
             ]
-            
-            response = self.llm_client.call_with_retry(self.recommendation_prompt, input_for_llm)
+
+            # 阶段3：若关联了文案，把要点作为相关性参考拼进提示词。
+            # 越贴合目标文案要点的片段应给更高分。无 hints 时提示词不变。
+            prompt = self.recommendation_prompt
+            if self.script_hints and self.script_hints.get("points"):
+                points = self.script_hints["points"]
+                title = self.script_hints.get("title", "")
+                hint_block = (
+                    "\n\n## 目标文案对齐（重要）\n"
+                    f"本视频对应一个既定选题/文案：《{title}》。核心要点如下：\n"
+                    + "\n".join(f"- {p}" for p in points[:20])
+                    + "\n评分时，请在原有标准基础上**额外提高与上述要点高度相关片段的分数**，"
+                    "让最终挑出的片段更贴合这个文案主题；与要点无关的片段维持原判。\n"
+                )
+                prompt = self.recommendation_prompt + hint_block
+
+            response = self.llm_client.call_with_retry(prompt, input_for_llm)
             parsed_list = self.llm_client.parse_json_response(response)
             
             if not isinstance(parsed_list, list) or len(parsed_list) != len(clips):
@@ -149,9 +167,21 @@ def run_step3_scoring(timeline_path: Path, metadata_dir: Path = None, output_pat
     # 加载时间线数据
     with open(timeline_path, 'r', encoding='utf-8') as f:
         timeline_data = json.load(f)
-    
+
+    # 阶段3：可选读取文案对齐提示（由 Step0 生成）。不存在则为 None，行为不变。
+    script_hints = None
+    if metadata_dir is not None:
+        hints_path = Path(metadata_dir) / "script_hints.json"
+        if hints_path.exists():
+            try:
+                with open(hints_path, 'r', encoding='utf-8') as f:
+                    script_hints = json.load(f)
+                logger.info("Step3 检测到文案对齐提示，将偏向匹配文案要点的片段")
+            except Exception as e:  # noqa: BLE001
+                logger.warning(f"读取 script_hints.json 失败，忽略对齐: {e}")
+
     # 创建评分器
-    scorer = ClipScorer(prompt_files)
+    scorer = ClipScorer(prompt_files, script_hints=script_hints)
     
     # 评分
     scored_clips = scorer.score_clips(timeline_data)

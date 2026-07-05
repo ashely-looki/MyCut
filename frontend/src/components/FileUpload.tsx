@@ -10,9 +10,11 @@ const { Text } = Typography
 
 interface FileUploadProps {
   onUploadSuccess?: (projectId: string) => void
+  /** 阶段3：关联的文案（JSON 字符串）。传入即以「选题驱动」模式上传，切片偏向匹配文案要点。 */
+  attachedScript?: string
 }
 
-const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
+const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess, attachedScript }) => {
   const [uploading, setUploading] = useState(false)
   const [uploadProgress, setUploadProgress] = useState(0)
   const [projectName, setProjectName] = useState('')
@@ -123,9 +125,10 @@ const FileUpload: React.FC<FileUploadProps> = ({ onUploadSuccess }) => {
         video_file: files.video,
         srt_file: files.srt,
         project_name: projectName.trim(),
-        video_category: selectedCategory
+        video_category: selectedCategory,
+        script_json: attachedScript
       })
-      
+
       console.log('上传成功，项目信息:', newProject)
       
       clearInterval(progressInterval)

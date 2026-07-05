@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Layout, Typography, Input, InputNumber, Select, Button, Spin, message, Empty } from 'antd'
-import { ArrowLeftOutlined, BulbOutlined, FileTextOutlined } from '@ant-design/icons'
+import { ArrowLeftOutlined, BulbOutlined, FileTextOutlined, ScissorOutlined } from '@ant-design/icons'
 import { scriptApi, Outline, ScriptSegment, TopicCard } from '../services/api'
 
 const { Content } = Layout
@@ -81,6 +81,16 @@ const ScriptEditorPage: React.FC = () => {
     setSegments((prev) => prev.map((s, idx) => (idx === i ? { ...s, [field]: v } : s)))
   }
 
+  // 带着文案去首页上传视频（选题驱动切片）
+  const handleUseForClip = () => {
+    if (!outline) {
+      message.warning('请先生成大纲')
+      return
+    }
+    const script = { title: title.trim(), outline, segments }
+    navigate('/', { state: { attachedScript: JSON.stringify(script) } })
+  }
+
   const totalSeconds = segments.reduce((sum, s) => sum + (s.est_seconds || 0), 0)
 
   const boxStyle: React.CSSProperties = {
@@ -103,6 +113,22 @@ const ScriptEditorPage: React.FC = () => {
             <Title level={2} style={{ margin: 0, color: 'var(--ac-ink)', fontSize: '20px', fontWeight: 600 }}>
               大纲 + 文案
             </Title>
+            <Button
+              type="text"
+              icon={<ScissorOutlined />}
+              onClick={handleUseForClip}
+              disabled={segments.length === 0}
+              style={{
+                marginLeft: 'auto',
+                height: '36px',
+                borderRadius: '999px',
+                border: '1px solid var(--ac-line)',
+                background: 'var(--ac-card)',
+                color: segments.length ? 'var(--ac-ink)' : 'var(--ac-muted)',
+              }}
+            >
+              用这个文案剪视频 →
+            </Button>
           </div>
 
           {/* 选题信息 + 参数 */}

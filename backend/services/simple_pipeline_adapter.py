@@ -7,6 +7,7 @@ from typing import Dict, Any, Optional, Callable
 from pathlib import Path
 
 from backend.services.simple_progress import emit_progress, clear_progress
+from backend.pipeline.step0_script_align import run_step0_script_align
 from backend.pipeline.step1_outline import run_step1_outline
 from backend.pipeline.step2_timeline import run_step2_timeline
 from backend.pipeline.step3_scoring import run_step3_scoring
@@ -114,7 +115,16 @@ class SimplePipelineAdapter:
             
             # 阶段2: 字幕处理
             emit_progress(self.project_id, "SUBTITLE", "开始字幕处理")
-            
+
+            # Step 0（可选）: 文案对齐 —— 若项目关联了文案，抽取要点供 step3 偏向匹配。
+            # 无关联文案时 no-op，clip_only 模式完全不受影响。
+            try:
+                hints = run_step0_script_align(metadata_dir)
+                if hints:
+                    logger.info(f"选题驱动模式：已加载文案对齐提示（{len(hints.get('points', []))} 个要点）")
+            except Exception as e:
+                logger.warning(f"Step0 文案对齐出错（忽略，继续走原流程）: {e}")
+
             # Step 1: 大纲提取
             logger.info("执行Step 1: 大纲提取")
             if input_srt_path and Path(input_srt_path).exists():

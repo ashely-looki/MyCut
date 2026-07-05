@@ -46,9 +46,14 @@ async def upload_files(
     srt_file: Optional[UploadFile] = File(None),
     project_name: str = Form(...),
     video_category: Optional[str] = Form(None),
+    script_json: Optional[str] = Form(None),
     project_service: ProjectService = Depends(get_project_service)
 ):
-    """Upload video file and optional subtitle file to create a new project. If no subtitle is provided, Whisper will automatically generate one."""
+    """Upload video file and optional subtitle file to create a new project. If no subtitle is provided, Whisper will automatically generate one.
+
+    script_json（可选）：阶段2 生成的文案（{title, outline, segments} 的 JSON 字符串）。
+    传入即进入「选题驱动」模式，切片会偏向匹配文案要点（阶段3）。
+    """
     try:
         # 验证视频文件类型
         if not video_file.filename.lower().endswith(('.mp4', '.avi', '.mov', '.mkv', '.webm')):
@@ -116,7 +121,22 @@ async def upload_files(
                 content = await srt_file.read()
                 f.write(content)
             logger.info(f"用户提供的字幕文件已保存: {srt_path}")
-        
+
+        # 阶段3：如果关联了文案，存到 metadata/script.json（选题驱动模式）
+        if script_json:
+            try:
+                import json as _json
+                from ...core.path_utils import get_project_directory
+                script_obj = _json.loads(script_json)
+                metadata_dir = get_project_directory(project_id) / "metadata"
+                metadata_dir.mkdir(parents=True, exist_ok=True)
+                with open(metadata_dir / "script.json", "w", encoding="utf-8") as f:
+                    _json.dump(script_obj, f, ensure_ascii=False, indent=2)
+                logger.info(f"项目 {project_id} 关联文案已保存，进入选题驱动模式")
+            except Exception as e:
+                # 文案保存失败不阻断上传，降级为普通切片
+                logger.warning(f"保存关联文案失败（降级为普通切片）: {e}")
+
         # 启动异步处理任务
         try:
             from ...tasks.import_processing import process_import_task

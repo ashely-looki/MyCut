@@ -125,6 +125,7 @@ export interface UploadFilesRequest {
   srt_file?: File
   project_name: string
   video_category?: string
+  script_json?: string  // 阶段3：关联的文案（JSON 字符串），传入即选题驱动模式
 }
 
 export interface VideoCategory {
@@ -250,7 +251,10 @@ export const projectApi = {
     if (data.video_category) {
       formData.append('video_category', data.video_category)
     }
-    
+    if (data.script_json) {
+      formData.append('script_json', data.script_json)
+    }
+
     try {
       const project = await api.post<unknown, Project>('/projects/upload', formData, {
         headers: {

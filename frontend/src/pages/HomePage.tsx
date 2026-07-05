@@ -7,7 +7,7 @@ import {
   Empty,
   message 
 } from 'antd'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import ProjectCard from '../components/ProjectCard'
 import FileUpload from '../components/FileUpload'
 
@@ -22,6 +22,9 @@ const { Option } = Select
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate()
+  const location = useLocation()
+  // 阶段3：从文案页带过来的关联文案（选题驱动模式）
+  const attachedScript = (location.state as { attachedScript?: string } | null)?.attachedScript
   const { projects, setProjects, deleteProject, loading, setLoading } = useProjectStore()
   const [statusFilter, setStatusFilter] = useState<string>('all')
 
@@ -137,8 +140,18 @@ const HomePage: React.FC = () => {
           }}>
             <div style={{ width: '100%', maxWidth: '820px' }}>
               <div style={{ fontSize: '13px', color: 'var(--ac-muted)', margin: '0 4px 14px', letterSpacing: '0.2px' }}>
-                上传本地视频，AI 自动切片
+                {attachedScript ? '选题驱动模式：上传素材，切片将偏向匹配你的文案要点' : '上传本地视频，AI 自动切片'}
               </div>
+              {/* 阶段3：带文案（选题驱动）时的提示条 */}
+              {attachedScript && (
+                <div style={{
+                  fontSize: '13px', color: 'var(--ac-ink)', background: 'var(--ac-line-2)',
+                  border: '1px solid var(--ac-line)', borderRadius: '12px',
+                  padding: '10px 14px', margin: '0 4px 14px',
+                }}>
+                  🎯 已关联文案：{(() => { try { return JSON.parse(attachedScript).title || '(未命名)' } catch { return '(文案)' } })()}
+                </div>
+              )}
               <div style={{
                 background: 'var(--ac-card)',
                 borderRadius: '16px',
@@ -148,10 +161,10 @@ const HomePage: React.FC = () => {
               }}>
               {/* 本地文件上传（B站/链接导入已移除） */}
               <div>
-                <FileUpload onUploadSuccess={async () => {
+                <FileUpload attachedScript={attachedScript} onUploadSuccess={async () => {
                   // 处理完成后刷新项目列表
                   await loadProjects()
-                  message.success('项目创建成功，正在处理中...')
+                  message.success(attachedScript ? '选题驱动项目已创建，正在按文案切片…' : '项目创建成功，正在处理中...')
                 }} />
               </div>
               </div>
