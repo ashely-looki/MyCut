@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Layout, Typography, Input, InputNumber, Select, Button, Spin, message, Empty } from 'antd'
-import { ArrowLeftOutlined, BulbOutlined, FileTextOutlined, ScissorOutlined, SaveOutlined } from '@ant-design/icons'
-import { scriptApi, Outline, ScriptSegment, TopicCard, SavedScript } from '../services/api'
+import { Layout, Typography, Input, InputNumber, Select, Button, Spin, message, Empty, Switch, Tooltip } from 'antd'
+import { ArrowLeftOutlined, BulbOutlined, FileTextOutlined, ScissorOutlined, SaveOutlined, VideoCameraOutlined } from '@ant-design/icons'
+import { scriptApi, composeApi, Outline, ScriptSegment, TopicCard, SavedScript } from '../services/api'
 
 const { Content } = Layout
 const { Title } = Typography
@@ -35,6 +35,8 @@ const ScriptEditorPage: React.FC = () => {
   const [loadingOutline, setLoadingOutline] = useState(false)
   const [loadingScript, setLoadingScript] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [composing, setComposing] = useState(false)
+  const [withScene, setWithScene] = useState(true) // 生视频时是否为每句生成信息动画
 
   const handleGenerateOutline = async () => {
     if (!title.trim()) {
@@ -135,6 +137,40 @@ const ScriptEditorPage: React.FC = () => {
     navigate('/', { state: { attachedScript: JSON.stringify(script) } })
   }
 
+  // 用这个文案自动成片（TTS 配音 + 逐句字幕 → MP4）。成片按 script_id 来，先确保已保存。
+  const handleCompose = async () => {
+    if (segments.length === 0) {
+      message.warning('请先生成文案再生成视频')
+      return
+    }
+    setComposing(true)
+    try {
+      // 依赖预检
+      const ready = await composeApi.ready()
+      if (!ready.ready) {
+        message.warning(ready.hint || '自动成片依赖未就绪')
+        return
+      }
+      // 没保存过就先保存，拿到 script_id（更新则用现有 id）
+      let id = scriptId
+      const payload = buildPayload()
+      if (id) {
+        await scriptApi.update(id, payload)
+      } else {
+        const created = await scriptApi.save(payload)
+        id = created.id
+        setScriptId(created.id)
+      }
+      await composeApi.fromScript(id!, withScene)
+      message.success(withScene ? '已开始生成视频（含信息动画），去首页看进度' : '已开始生成视频，去首页看进度')
+      navigate('/')
+    } catch (e: any) {
+      message.error(e?.response?.data?.detail || '启动生成视频失败')
+    } finally {
+      setComposing(false)
+    }
+  }
+
   const totalSeconds = segments.reduce((sum, s) => sum + (s.est_seconds || 0), 0)
 
   const boxStyle: React.CSSProperties = {
@@ -187,7 +223,30 @@ const ScriptEditorPage: React.FC = () => {
                 color: segments.length ? 'var(--ac-ink)' : 'var(--ac-muted)',
               }}
             >
-              用这个文案剪视频 →
+              去剪视频 →
+            </Button>
+            {/* 信息动画开关（默认开）：关掉则纯字幕，出片更快 */}
+            <Tooltip title="为每句生成信息动画（关键词/图标/步骤/对比逐个入场；关掉则纯字幕，出片更快）">
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '0 4px', fontSize: '13px', color: 'var(--ac-sub)' }}>
+                <Switch size="small" checked={withScene} onChange={setWithScene} />
+                信息动画
+              </span>
+            </Tooltip>
+            <Button
+              type="text"
+              icon={<VideoCameraOutlined />}
+              onClick={handleCompose}
+              loading={composing}
+              disabled={segments.length === 0}
+              style={{
+                height: '36px',
+                borderRadius: '999px',
+                border: '1px solid var(--ac-line)',
+                background: 'var(--ac-card)',
+                color: segments.length ? 'var(--ac-accent)' : 'var(--ac-muted)',
+              }}
+            >
+              去生视频 →
             </Button>
           </div>
 

@@ -27,6 +27,7 @@ from .simple_progress import router as simple_progress_router
 from .settings import router as settings_router
 from .hotspots import router as hotspots_router
 from .scripts import router as scripts_router
+from .compose import router as compose_router
 # B站上传/投稿/队列/账号相关路由已移除（不在本项目范围内）
 
 # 注册所有路由
@@ -48,5 +49,6 @@ api_router.include_router(simple_progress_router, tags=["simple-progress"])
 api_router.include_router(settings_router, tags=["settings"])
 api_router.include_router(hotspots_router, prefix="/hotspots", tags=["hotspots"])
 api_router.include_router(scripts_router, prefix="/scripts", tags=["scripts"])
+api_router.include_router(compose_router, prefix="/compose", tags=["compose"])
 
 __all__ = ["api_router"]

@@ -60,46 +60,43 @@ const Header: React.FC = () => {
         )}
         <Button
           type="text"
+          className="glass-btn"
           icon={theme === 'dark' ? <BulbOutlined /> : <MoonOutlined />}
           onClick={toggleTheme}
           aria-label={theme === 'dark' ? '切换到亮色模式' : '切换到暗色模式'}
           title={theme === 'dark' ? '切换到亮色模式' : '切换到暗色模式'}
           style={{
             color: 'var(--ac-sub)',
-            border: '1px solid var(--ac-line)',
             borderRadius: '999px',
             width: '36px',
             height: '36px',
             padding: 0,
-            background: 'var(--ac-card)',
           }}
         />
         <Button
           type="text"
+          className="glass-btn"
           icon={<FileTextOutlined />}
           onClick={() => navigate('/scripts')}
           style={{
             color: location.pathname === '/scripts' ? 'var(--ac-accent)' : 'var(--ac-sub)',
-            border: '1px solid var(--ac-line)',
             borderRadius: '999px',
             height: '36px',
             padding: '0 16px',
-            background: 'var(--ac-card)',
           }}
         >
           文案库
         </Button>
         <Button
           type="text"
+          className="glass-btn"
           icon={<SettingOutlined />}
           onClick={() => navigate('/settings')}
           style={{
             color: 'var(--ac-sub)',
-            border: '1px solid var(--ac-line)',
             borderRadius: '999px',
             height: '36px',
             padding: '0 16px',
-            background: 'var(--ac-card)',
           }}
         >
           设置

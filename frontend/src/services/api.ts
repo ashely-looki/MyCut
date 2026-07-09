@@ -626,6 +626,22 @@ export const scriptApi = {
   remove: (id: string): Promise<{ message: string; id: string }> => api.delete(`/scripts/${id}`),
 }
 
+// 自动成片（Remotion 合成路线）：文案 → 配音 + 逐句字幕 → MP4
+export interface ComposeReady {
+  ready: boolean
+  remotion: boolean
+  tts: boolean
+  hint: string | null
+}
+
+export const composeApi = {
+  // 依赖是否就绪（Remotion + edge-tts）
+  ready: (): Promise<ComposeReady> => api.get('/compose/ready'),
+  // 由保存的文案启动成片，返回承载产物的项目 ID。withScene=是否为每句生成信息动画（默认开）
+  fromScript: (scriptId: string, withScene = true): Promise<{ project_id: string; message: string }> =>
+    api.post('/compose/from-script', { script_id: scriptId, with_scene: withScene }),
+}
+
 export interface WhisperRuntimeStatus {
   status: 'unknown' | 'not_installed' | 'installing' | 'installed' | 'error'
   progress: number

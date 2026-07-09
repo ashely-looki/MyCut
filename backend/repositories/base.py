@@ -62,16 +62,23 @@ class BaseRepository(Generic[ModelType]):
     
     def get_all(self, skip: int = 0, limit: int = 100) -> List[ModelType]:
         """
-        获取所有记录
-        
+        获取所有记录（按创建时间倒序，最新在前）
+
+        没有 ORDER BY 时 SQLite 返回顺序不确定（近似插入序，旧的在前），
+        分页取第一页会把最新记录挤到后面看不到。故默认按 created_at 倒序。
+
         Args:
             skip: 跳过的记录数
             limit: 返回的记录数限制
-            
+
         Returns:
             模型实例列表
         """
-        return self.db.query(self.model).offset(skip).limit(limit).all()
+        query = self.db.query(self.model)
+        # 所有模型经 BaseModel 都带 created_at；防御性判断以兼容特殊模型
+        if hasattr(self.model, "created_at"):
+            query = query.order_by(self.model.created_at.desc())
+        return query.offset(skip).limit(limit).all()
     
     def update(self, id: str, auto_commit: bool = True, **kwargs) -> Optional[ModelType]:
         """

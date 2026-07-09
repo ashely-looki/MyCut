@@ -119,6 +119,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onDelete, onRetry, o
         
         // 尝试多个可能的视频文件路径
         const possiblePaths = [
+          'compose.mp4',   // 自动成片产物（output/compose.mp4，由 /files 端点在 output 下命中）
           'input/input.mp4',
           'input.mp4',
           project.video_path,

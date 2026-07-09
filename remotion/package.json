@@ -1,0 +1,23 @@
+{
+  "name": "mycut-remotion",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MyCut 自动成片：文案 → 配音 + 逐句字幕 → MP4（Remotion 合成路线，旁路模块）",
+  "scripts": {
+    "dev": "remotion studio",
+    "render": "remotion render src/index.ts CaptionedVideo",
+    "upgrade": "remotion upgrade"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.485",
+    "@remotion/google-fonts": "^4.0.485",
+    "@remotion/transitions": "^4.0.485",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "remotion": "4.0.485"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "typescript": "^5.4.0"
+  }
+}

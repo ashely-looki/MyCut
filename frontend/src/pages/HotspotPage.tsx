@@ -27,17 +27,12 @@ const HotspotPage: React.FC = () => {
             </Title>
           </div>
           <Text style={{ color: 'var(--ac-muted)', fontSize: '13px', display: 'block', marginBottom: '24px', paddingLeft: '4px' }}>
-            输入领域找选题，选中后就地生成大纲和文案，保存到文案库或直接去剪视频
+            输入领域找选题，点选题进入下一步生成大纲和文案
           </Text>
 
-          {/* 完整流程面板 */}
+          {/* 查热点 → 选题卡片（点选题跳文案编辑页生成大纲/文案） */}
           <div style={{ background: 'var(--ac-card)', borderRadius: '16px', border: '1px solid var(--ac-line)', padding: '20px', boxShadow: 'var(--ac-shadow)' }}>
-            <HotspotPanel
-              onUseForClip={(scriptJson) => {
-                // 带上文案回首页，右侧上传素材即按文案切片
-                navigate('/', { state: { attachedScript: scriptJson } })
-              }}
-            />
+            <HotspotPanel />
           </div>
         </div>
       </Content>

@@ -787,3 +787,65 @@ body { font-family: var(--ac-font-sans) !important; }
 .upload-area { background: var(--ac-line-2) !important; border: 2px dashed var(--ac-line) !important; }
 .upload-area:hover { border-color: var(--ac-accent) !important; background: color-mix(in srgb, var(--ac-accent) 6%, var(--ac-card)) !important; box-shadow: var(--ac-shadow) !important; }
 .upload-area.dragover { border-color: var(--ac-accent) !important; background: color-mix(in srgb, var(--ac-accent) 10%, var(--ac-card)) !important; }
+
+/* TiltCard —— 只取 reactbits ProfileCard 的 3D 倾斜动效（无配色/发光）。
+   静止：transform .8s ease 收回平；悬停 active：transition none 逐帧跟随光标。
+   轴交换：卡片 rotateX 用 --rotate-y、rotateY 用 --rotate-x（朝光标倾）。 */
+.tilt-card {
+  --rotate-x: 0deg;
+  --rotate-y: 0deg;
+  transition: transform .8s ease;
+  transform: rotateX(0deg) rotateY(0deg);
+  will-change: transform;
+}
+.tilt-card.tilt-active {
+  transition: none;
+  transform: rotateX(var(--rotate-y)) rotateY(var(--rotate-x));
+}
+
+/* GlassIcons 玻璃质感（单色版）——取 reactbits GlassIcons 的玻璃拟态：
+   磨砂模糊 backdrop-filter + 内发光白环 + 柔和外阴影 + 悬停 3D 微抬。
+   不用彩色渐变，背景仍走 token（Calm Premium）。套在头部胶囊按钮上。 */
+.glass-btn {
+  position: relative;
+  /* 半透明玻璃底（在头部半透明背景上叠磨砂） */
+  background: color-mix(in srgb, var(--ac-card) 55%, transparent) !important;
+  backdrop-filter: blur(10px) saturate(1.1);
+  -webkit-backdrop-filter: blur(10px) saturate(1.1);
+  /* 内发光白环（玻璃亮边）+ 柔和外阴影（悬浮感） */
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--ac-line) 60%, transparent) inset,
+    0 1px 0 rgba(255, 255, 255, 0.5) inset,
+    0 2px 8px rgba(26, 26, 25, 0.06);
+  border: none !important;
+  transition:
+    transform 0.3s cubic-bezier(0.83, 0, 0.17, 1),
+    box-shadow 0.3s cubic-bezier(0.83, 0, 0.17, 1),
+    background 0.3s ease;
+  will-change: transform;
+}
+.glass-btn:hover {
+  /* 3D 微抬 + 增强玻璃亮边/阴影 */
+  transform: translateY(-2px);
+  background: color-mix(in srgb, var(--ac-card) 70%, transparent) !important;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--ac-accent) 45%, transparent) inset,
+    0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 6px 16px rgba(26, 26, 25, 0.12);
+}
+.glass-btn:active {
+  transform: translateY(0);
+}
+/* 深色模式：内发光高光调暗，避免刺眼白边 */
+[data-theme="dark"] .glass-btn {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--ac-line) 80%, transparent) inset,
+    0 1px 0 rgba(255, 255, 255, 0.08) inset,
+    0 2px 8px rgba(0, 0, 0, 0.3);
+}
+[data-theme="dark"] .glass-btn:hover {
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--ac-accent) 55%, transparent) inset,
+    0 1px 0 rgba(255, 255, 255, 0.12) inset,
+    0 6px 16px rgba(0, 0, 0, 0.45);
+}

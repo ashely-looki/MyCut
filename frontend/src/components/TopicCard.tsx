@@ -5,24 +5,23 @@ import { TopicCard as TopicCardData } from '../services/api'
 interface TopicCardProps {
   topic: TopicCardData
   onUse?: (topic: TopicCardData) => void
-  /** 该卡片是否处于「已展开生成文案」状态（高亮按钮） */
-  active?: boolean
   /** 主操作按钮文案，默认「生成文案」 */
   actionLabel?: string
 }
 
 /**
  * 选题卡片 —— 克制专业风（对齐 DESIGN.md）。
- * 近乎全单色，仅用一抹克制蓝做强调（热度条 / 主操作）。
+ * 近乎全单色，仅用一抹克制橙做强调（热度条 / 主操作）。
+ * 点主操作 → 跳到文案编辑页生成大纲/文案。
  */
-const TopicCard: React.FC<TopicCardProps> = ({ topic, onUse, active = false, actionLabel = '生成文案' }) => {
+const TopicCard: React.FC<TopicCardProps> = ({ topic, onUse, actionLabel = '生成文案' }) => {
   const heatPct = Math.round((topic.heat_score || 0) * 100)
 
   return (
     <div
       style={{
         background: 'var(--ac-card)',
-        border: active ? '1px solid var(--ac-accent)' : '1px solid var(--ac-line)',
+        border: '1px solid var(--ac-line)',
         borderRadius: '16px',
         padding: '20px',
         boxShadow: 'var(--ac-shadow)',
@@ -101,14 +100,14 @@ const TopicCard: React.FC<TopicCardProps> = ({ topic, onUse, active = false, act
             width: '100%',
             height: '36px',
             borderRadius: '999px',
-            border: active ? '1px solid var(--ac-accent)' : '1px solid var(--ac-line)',
-            background: active ? 'var(--ac-accent)' : 'var(--ac-card)',
-            color: active ? '#fff' : 'var(--ac-ink)',
+            border: '1px solid var(--ac-line)',
+            background: 'var(--ac-card)',
+            color: 'var(--ac-ink)',
             fontSize: '13px',
             fontWeight: 500,
           }}
         >
-          {active ? '正在编辑文案' : actionLabel}
+          {actionLabel}
         </Button>
       </div>
     </div>

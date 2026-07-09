@@ -8,9 +8,10 @@ import {
   message 
 } from 'antd'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { SearchOutlined, PlusOutlined } from '@ant-design/icons'
+import { SearchOutlined, PlusOutlined, VideoCameraOutlined } from '@ant-design/icons'
 import ProjectCard from '../components/ProjectCard'
 import FileUpload from '../components/FileUpload'
+import TiltCard from '../components/TiltCard'
 
 import { projectApi } from '../services/api'
 import { useSimpleProgressStore } from '../stores/useSimpleProgressStore'
@@ -135,47 +136,83 @@ const HomePage: React.FC = () => {
     }}>
       <Content style={{ padding: '40px 56px 56px', position: 'relative' }}>
         <div style={{ maxWidth: '1200px', margin: '0 auto', position: 'relative' }}>
-          {/* 主操作区：热点选题（左） + 上传视频（右） 并排 */}
+          {/* 主操作区：查热点（左） + 自动成片（中） + 上传视频（右） 三块并排。
+              卡片固定高度 + 底部对齐：关联文案时第三块提示条只让它自己的卡片下移，
+              前两块不被拉长，三块底部仍齐平。 */}
           <div style={{
             marginTop: '20px',
             marginBottom: '48px',
             display: 'grid',
-            gridTemplateColumns: 'minmax(360px, 6fr) minmax(360px, 5fr)',
+            gridTemplateColumns: 'repeat(3, minmax(240px, 1fr))',
             gap: '24px',
-            alignItems: 'start',
+            alignItems: 'end',
           }}>
             {/* 左：查热点入口卡片（点进去是完整的查热点→大纲→文案→保存流程） */}
-            <div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
               <div style={{ fontSize: '13px', color: 'var(--ac-muted)', margin: '0 4px 14px', letterSpacing: '0.2px' }}>
                 找选题
               </div>
-              <div
-                onClick={() => navigate('/hotspots')}
-                style={{
-                  background: 'var(--ac-card)', borderRadius: '16px', border: '1px solid var(--ac-line)',
-                  boxShadow: 'var(--ac-shadow)', cursor: 'pointer',
-                  minHeight: '360px', display: 'flex', flexDirection: 'column',
-                  alignItems: 'center', justifyContent: 'center', gap: '16px', padding: '24px',
-                  transition: 'border-color .2s ease',
-                }}
-                onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--ac-accent)')}
-                onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--ac-line)')}
-              >
-                <div style={{
-                  width: '64px', height: '64px', borderRadius: '50%', background: 'var(--ac-thumb)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                }}>
-                  <SearchOutlined style={{ fontSize: '28px', color: 'var(--ac-accent)' }} />
+              <TiltCard>
+                <div
+                  onClick={() => navigate('/hotspots')}
+                  style={{
+                    background: 'var(--ac-card)', borderRadius: '16px', border: '1px solid var(--ac-line)',
+                    boxShadow: 'var(--ac-shadow)', cursor: 'pointer',
+                    height: '360px', display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'flex-start', gap: '16px', padding: '110px 24px 24px',
+                    transition: 'border-color .2s ease',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--ac-accent)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--ac-line)')}
+                >
+                  <div style={{
+                    width: '64px', height: '64px', borderRadius: '50%', background: 'var(--ac-thumb)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}>
+                    <SearchOutlined style={{ fontSize: '28px', color: 'var(--ac-accent)' }} />
+                  </div>
+                  <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--ac-ink)' }}>AI 查热点，选题就地出文案</div>
+                  <div style={{ fontSize: '13px', color: 'var(--ac-sub)', textAlign: 'center', lineHeight: 1.6 }}>
+                    输入领域 → 查热点选题 → 生成大纲和文案 → 保存到文案库
+                  </div>
                 </div>
-                <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--ac-ink)' }}>AI 查热点，选题就地出文案</div>
-                <div style={{ fontSize: '13px', color: 'var(--ac-sub)', textAlign: 'center', lineHeight: 1.6 }}>
-                  输入领域 → 查热点选题 → 生成大纲和文案 → 保存到文案库
-                </div>
+              </TiltCard>
+            </div>
+
+            {/* 中：自动成片入口卡片（点进去到文案库，选一篇文案一键生成视频） */}
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={{ fontSize: '13px', color: 'var(--ac-muted)', margin: '0 4px 14px', letterSpacing: '0.2px' }}>
+                自动成片
               </div>
+              <TiltCard>
+                <div
+                  onClick={() => navigate('/scripts')}
+                  style={{
+                    background: 'var(--ac-card)', borderRadius: '16px', border: '1px solid var(--ac-line)',
+                    boxShadow: 'var(--ac-shadow)', cursor: 'pointer',
+                    height: '360px', display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'flex-start', gap: '16px', padding: '110px 24px 24px',
+                    transition: 'border-color .2s ease',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'var(--ac-accent)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'var(--ac-line)')}
+                >
+                  <div style={{
+                    width: '64px', height: '64px', borderRadius: '50%', background: 'var(--ac-thumb)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                  }}>
+                    <VideoCameraOutlined style={{ fontSize: '28px', color: 'var(--ac-accent)' }} />
+                  </div>
+                  <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--ac-ink)' }}>文案一键自动成片</div>
+                  <div style={{ fontSize: '13px', color: 'var(--ac-sub)', textAlign: 'center', lineHeight: 1.6 }}>
+                    选一篇文案 → AI 配音 + 逐句字幕 → 自动生成视频
+                  </div>
+                </div>
+              </TiltCard>
             </div>
 
             {/* 右：上传视频 */}
-            <div>
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
               <div style={{ fontSize: '13px', color: 'var(--ac-muted)', margin: '0 4px 14px', letterSpacing: '0.2px' }}>
                 {attachedScript ? '选题驱动模式：上传素材，切片偏向匹配文案要点' : '上传本地视频，AI 自动切片'}
               </div>
@@ -189,36 +226,39 @@ const HomePage: React.FC = () => {
                   <a onClick={() => setAttachedScript(undefined)} style={{ marginLeft: 'auto', color: 'var(--ac-muted)', cursor: 'pointer', fontSize: '12px' }}>取消关联</a>
                 </div>
               )}
-              <div
-                onMouseEnter={() => setUploadHovered(true)}
-                onMouseLeave={() => setUploadHovered(false)}
-                style={{
-                  background: 'var(--ac-card)', borderRadius: '16px',
-                  border: uploadHovered ? '1px solid var(--ac-accent)' : '1px solid var(--ac-line)',
-                  padding: '18px', boxShadow: 'var(--ac-shadow)',
-                  minHeight: '360px', display: 'flex', flexDirection: 'column',
-                  justifyContent: 'center', transition: 'border-color .2s ease',
-                }}
-              >
-                {uploadHovered ? (
-                  <FileUpload attachedScript={attachedScript} onUploadSuccess={async () => {
-                    await loadProjects()
-                    message.success(attachedScript ? '选题驱动项目已创建，正在按文案切片…' : '项目创建成功，正在处理中...')
-                  }} />
-                ) : (
-                  /* 收起态：加号入口 */
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-                    <div style={{
-                      width: '64px', height: '64px', borderRadius: '50%', background: 'var(--ac-thumb)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      <PlusOutlined style={{ fontSize: '28px', color: 'var(--ac-accent)' }} />
+              <TiltCard disabled={uploadHovered}>
+                <div
+                  onMouseEnter={() => setUploadHovered(true)}
+                  onMouseLeave={() => setUploadHovered(false)}
+                  style={{
+                    background: 'var(--ac-card)', borderRadius: '16px',
+                    border: uploadHovered ? '1px solid var(--ac-accent)' : '1px solid var(--ac-line)',
+                    padding: uploadHovered ? '18px' : '110px 24px 24px', boxShadow: 'var(--ac-shadow)',
+                    height: '360px', display: 'flex', flexDirection: 'column',
+                    alignItems: uploadHovered ? 'stretch' : 'center',
+                    justifyContent: uploadHovered ? 'center' : 'flex-start', transition: 'border-color .2s ease',
+                  }}
+                >
+                  {uploadHovered ? (
+                    <FileUpload attachedScript={attachedScript} onUploadSuccess={async () => {
+                      await loadProjects()
+                      message.success(attachedScript ? '选题驱动项目已创建，正在按文案切片…' : '项目创建成功，正在处理中...')
+                    }} />
+                  ) : (
+                    /* 收起态：加号入口（与左/中卡图标齐平） */
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+                      <div style={{
+                        width: '64px', height: '64px', borderRadius: '50%', background: 'var(--ac-thumb)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                      }}>
+                        <PlusOutlined style={{ fontSize: '28px', color: 'var(--ac-accent)' }} />
+                      </div>
+                      <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--ac-ink)' }}>上传本地视频，AI 自动剪辑</div>
+                      <div style={{ fontSize: '13px', color: 'var(--ac-muted)' }}>把鼠标移到这里开始上传</div>
                     </div>
-                    <div style={{ fontSize: '16px', fontWeight: 600, color: 'var(--ac-ink)' }}>上传本地视频，AI 自动剪辑</div>
-                    <div style={{ fontSize: '13px', color: 'var(--ac-muted)' }}>把鼠标移到这里开始上传</div>
-                  </div>
-                )}
-              </div>
+                  )}
+                </div>
+              </TiltCard>
             </div>
           </div>
 

@@ -838,6 +838,7 @@ async def get_project_file(
         possible_paths = [
             project_root / "raw" / filename,  # 原始文件
             project_root / "metadata" / filename,  # 元数据文件
+            project_root / "output" / filename,  # 输出产物（如自动成片 compose.mp4）
             project_root / filename,  # 直接在项目根目录
         ]
         
@@ -890,16 +891,12 @@ async def get_project_clip(
         from ...core.path_utils import get_project_directory
         project_dir = get_project_directory(project_id)
         clips_dir = project_dir / "output" / "clips"
-        
-        # 确保路径存在
-        if not clips_dir.exists():
-            raise HTTPException(status_code=404, detail=f"Clips directory not found: {clips_dir}")
-        
-        # 查找对应的视频文件
-        # 首先尝试通过clip_id查找
-        video_files = list(clips_dir.glob(f"{clip_id}_*.mp4"))
-        
-        # 如果没找到，尝试查找所有mp4文件，然后通过数据库匹配
+
+        # 先尝试常规切片目录（step6 产物：output/clips/<clip_id>_*.mp4）
+        video_files = list(clips_dir.glob(f"{clip_id}_*.mp4")) if clips_dir.exists() else []
+
+        # 没命中就回退到数据库里 clip 记录的 video_path
+        # （自动成片等场景：视频在 output/compose.mp4，没有 output/clips 目录）
         if not video_files:
             from ...models.clip import Clip
             clip = project_service.db.query(Clip).filter(Clip.id == clip_id).first()

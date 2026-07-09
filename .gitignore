@@ -147,3 +147,12 @@ control/
 
 # tsc 增量构建缓存
 *.tsbuildinfo
+
+# Remotion 合成路线(可选模块)
+remotion/node_modules/
+remotion/out/
+remotion/.remotion/
+
+# 设计钩子本地缓存(不入库)
+.impeccable/
+**/.impeccable/

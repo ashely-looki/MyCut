@@ -59,3 +59,25 @@ def get_ffprobe_path() -> str:
     return "ffprobe"
 
 
+def get_node_path() -> str:
+    """返回 node 可执行文件路径（或命令名）。用于 Remotion 合成路线。"""
+    env_path = _resolve_from_env(["AUTOCLIP_NODE_PATH", "NODE_PATH_BIN"])
+    if env_path:
+        return env_path
+    which = shutil.which("node")
+    if which:
+        return which
+    return "node"
+
+
+def get_npx_path() -> str:
+    """返回 npx 可执行文件路径（或命令名）。用于调用 Remotion CLI。"""
+    env_path = _resolve_from_env(["AUTOCLIP_NPX_PATH"])
+    if env_path:
+        return env_path
+    which = shutil.which("npx")
+    if which:
+        return which
+    return "npx"
+
+

@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Layout, Typography, Button, Spin, Empty, Popconfirm, message } from 'antd'
-import { EditOutlined, ScissorOutlined, DeleteOutlined, PlusOutlined } from '@ant-design/icons'
-import { scriptApi, SavedScript } from '../services/api'
+import { EditOutlined, ScissorOutlined, DeleteOutlined, PlusOutlined, VideoCameraOutlined } from '@ant-design/icons'
+import { scriptApi, composeApi, SavedScript } from '../services/api'
 
 const { Content } = Layout
 const { Title, Text } = Typography
@@ -15,6 +15,8 @@ const ScriptLibraryPage: React.FC = () => {
   const navigate = useNavigate()
   const [scripts, setScripts] = useState<SavedScript[]>([])
   const [loading, setLoading] = useState(true)
+  // 正在启动成片的文案 id（按钮 loading）
+  const [composingId, setComposingId] = useState<string | null>(null)
 
   const load = async () => {
     setLoading(true)
@@ -34,6 +36,29 @@ const ScriptLibraryPage: React.FC = () => {
   const handleUseForClip = (s: SavedScript) => {
     const script = { title: s.title, outline: s.outline, segments: s.segments }
     navigate('/', { state: { attachedScript: JSON.stringify(script) } })
+  }
+
+  // 自动成片：文案 → 配音 + 逐句字幕 → 项目库出片
+  const handleCompose = async (s: SavedScript) => {
+    if (!s.segments?.length) {
+      message.warning('这篇文案还没有分镜内容，无法生成视频')
+      return
+    }
+    setComposingId(s.id)
+    try {
+      const ready = await composeApi.ready()
+      if (!ready.ready) {
+        message.warning(ready.hint || '自动成片依赖未就绪')
+        return
+      }
+      await composeApi.fromScript(s.id)
+      message.success('已开始生成视频，去首页看进度')
+      navigate('/')
+    } catch (e: any) {
+      message.error(e?.response?.data?.detail || '启动生成视频失败')
+    } finally {
+      setComposingId(null)
+    }
   }
 
   const handleDelete = async (id: string) => {
@@ -90,6 +115,9 @@ const ScriptLibraryPage: React.FC = () => {
                       style={{ borderRadius: '999px', border: '1px solid var(--ac-line)' }}>编辑</Button>
                     <Button size="small" icon={<ScissorOutlined />} onClick={() => handleUseForClip(s)}
                       style={{ borderRadius: '999px', border: '1px solid var(--ac-line)', color: 'var(--ac-ink)' }}>用它剪视频</Button>
+                    <Button size="small" icon={<VideoCameraOutlined />} loading={composingId === s.id}
+                      onClick={() => handleCompose(s)}
+                      style={{ borderRadius: '999px', border: '1px solid var(--ac-line)', color: 'var(--ac-accent)' }}>生成视频</Button>
                     <Popconfirm title="删除这篇文案？" onConfirm={() => handleDelete(s.id)} okText="删除" cancelText="取消">
                       <Button size="small" type="text" icon={<DeleteOutlined />} danger style={{ marginLeft: 'auto', borderRadius: '999px' }} />
                     </Popconfirm>
