@@ -2,6 +2,7 @@ import React from 'react'
 import {
   AbsoluteFill,
   Audio,
+  Sequence,
   interpolate,
   spring,
   staticFile,
@@ -10,13 +11,14 @@ import {
 } from 'remotion'
 import { TransitionSeries, linearTiming } from '@remotion/transitions'
 import { fade } from '@remotion/transitions/fade'
-import { slide } from '@remotion/transitions/slide'
-import { Scene, SceneStage, SceneTheme } from './SceneStage'
+import { Scene, SceneTheme } from './SceneStage'
+import { VisualStage, VisualType } from './VisualStage'
 import { CN_FONT_STACK } from './fonts'
 
-// 句间过渡时长（帧）。TransitionSeries 会让相邻片段重叠这么多帧做交叉过渡，
-// 后端已把这段重叠帧补进每句时长，故音画不失步。~0.4s，克制不喧宾夺主。
-export const TRANSITION_FRAMES = 12
+// 句间过渡时长（帧）。TransitionSeries 让相邻片段重叠这么多帧做交叉溶解；
+// 总时长由 Root.tsx calcDuration 减去重叠帧算出，每句音频跟随自身片段，音画不失步。
+// ~0.6s，丝滑从容的溶解（非 PPT 翻页/推屏）。
+export const TRANSITION_FRAMES = 18
 
 /**
  * 逐句字幕科普视频。
@@ -33,7 +35,14 @@ export const TRANSITION_FRAMES = 12
 export type CaptionSegment = {
   text: string
   audioSrc: string | null // 该句配音文件（staticFile 相对路径），可为 null（无配音）
+  // 上区画面来源（素材混剪路线）。给了 visualType+visualSrc 就渲素材，否则回退 scene：
+  //   'video'          实拍/生成的视频素材（OffthreadVideo）
+  //   'image-kenburns' 静图 + 缓慢推拉
+  //   'scene'/未指定    走结构化信息动画 scene
+  visualType?: VisualType | null
+  visualSrc?: string | null // 素材文件路径（相对 remotion/public/，或 http(s)/data）
   scene?: Scene | null // 该句的信息动画视觉脚本；null/空则上区留暖底
+  overlayTheme?: SceneTheme | null // 实拍句叠加组件专用 theme（accent 取自视频主色，呼应画面）
   durationInFrames: number
   role?: string // hook | body | cta
 }
@@ -107,77 +116,69 @@ const TitleCard: React.FC<{ title: string; style?: string; theme: CaptionedVideo
   )
 }
 
+// 画面卡：只负责上区视觉（实拍/静图/信息动画）+ 底部暗化渐变。
+// 字幕不在这里——字幕单独走一条不参与转场的轨（见 CaptionTrack），避免句间 fade
+// 转场时前后两句字幕在重叠帧里半透明叠加、互相遮挡。
 const CaptionCard: React.FC<{
   segment: CaptionSegment
-  index: number
-  total: number
   theme: CaptionedVideoProps['theme']
-}> = ({ segment, index, total, theme }) => {
-  const frame = useCurrentFrame()
-  const { fps } = useVideoConfig()
-  const enter = spring({ frame, fps, config: { damping: 200, mass: 0.6 } })
-  const opacity = interpolate(enter, [0, 1], [0, 1])
-  const translateY = interpolate(enter, [0, 1], [40, 0])
-
+}> = ({ segment, theme }) => {
   return (
     <AbsoluteFill style={{ backgroundColor: theme.bg, fontFamily: FONT_STACK }}>
-      {/* 上区 62%：信息动画舞台（按视觉脚本逐元素入场） */}
-      <div style={{ height: '62%', width: '100%', overflow: 'hidden', position: 'relative', backgroundColor: theme.bg }}>
-        {segment.scene ? <SceneStage scene={segment.scene} theme={theme} /> : null}
-        {/* 右上角进度序号 */}
-        <div
-          style={{
-            position: 'absolute',
-            top: 48,
-            right: 64,
-            fontSize: 26,
-            color: theme.sub,
-            fontVariantNumeric: 'tabular-nums',
-            letterSpacing: '2px',
-          }}
-        >
-          {String(index + 1).padStart(2, '0')} / {String(total).padStart(2, '0')}
-        </div>
-      </div>
-
-      {/* 下区 38%：暖底字幕区（与上区之间一条发丝线分隔）。整句一次显示，清晰易读。 */}
-      <div
-        style={{
-          height: '38%',
-          width: '100%',
-          backgroundColor: theme.bg,
-          borderTop: `1px solid ${theme.line}`,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '0 200px',
-          position: 'relative',
-        }}
-      >
-        <div style={{ opacity, transform: `translateY(${translateY}px)`, textAlign: 'center', maxWidth: 1500 }}>
-          <div style={{ fontSize: 56, fontWeight: 600, color: theme.ink, lineHeight: 1.45, letterSpacing: '0.5px' }}>
-            {segment.text}
-          </div>
-        </div>
-        {/* 底部细橙线 */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: 56,
-            left: '50%',
-            transform: 'translateX(-50%)',
-            width: 120,
-            height: 4,
-            borderRadius: 999,
-            backgroundColor: theme.accent,
-            opacity,
-          }}
+      <AbsoluteFill style={{ overflow: 'hidden' }}>
+        <VisualStage
+          visualType={segment.visualType}
+          visualSrc={segment.visualSrc}
+          scene={segment.scene}
+          theme={theme}
+          overlayTheme={segment.overlayTheme}
+          durationInFrames={segment.durationInFrames}
         />
-      </div>
+      </AbsoluteFill>
+
+      {/* 底部暗化渐变：统一都铺，保证任意画面（实拍/静图/信息动画）上白字字幕都清晰 */}
+      <AbsoluteFill
+        style={{
+          background:
+            'linear-gradient(to bottom, rgba(0,0,0,0) 48%, rgba(0,0,0,0.32) 70%, rgba(0,0,0,0.8) 100%)',
+          pointerEvents: 'none',
+        }}
+      />
     </AbsoluteFill>
   )
 }
+
+// 单条字幕：一次性显示整句，无淡入淡出。颜色统一白字 + 阴影，位置压底稍偏下。
+const CaptionText: React.FC<{ text: string }> = ({ text }) => (
+  <AbsoluteFill style={{ fontFamily: FONT_STACK }}>
+    <div
+      style={{
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 90,
+        display: 'flex',
+        justifyContent: 'center',
+        padding: '0 200px',
+      }}
+    >
+      <div
+        style={{
+          textAlign: 'center',
+          maxWidth: 1500,
+          fontSize: 56,
+          fontWeight: 600,
+          color: '#FFFFFF',
+          lineHeight: 1.45,
+          letterSpacing: '0.5px',
+          textShadow: '0 2px 16px rgba(0,0,0,0.6)',
+        }}
+      >
+        {text}
+      </div>
+    </div>
+  </AbsoluteFill>
+)
 
 const OutroCard: React.FC<{ theme: CaptionedVideoProps['theme'] }> = ({ theme }) => {
   const frame = useCurrentFrame()
@@ -216,8 +217,21 @@ export const CaptionedVideo: React.FC<CaptionedVideoProps> = ({
 }) => {
   const timing = linearTiming({ durationInFrames: TRANSITION_FRAMES })
 
+  // 字幕轨每句的起始帧与时长。TransitionSeries 让相邻片段重叠 TRANSITION_FRAMES 帧做转场，
+  // 所以片头后第一句起点 = 片头时长 − 重叠帧；之后每句 = 前句起点 + 前句时长 − 重叠帧。
+  // 字幕时长同样各减一个重叠帧，使相邻字幕区间首尾相接、不重叠 → 硬切、永不互相遮挡。
+  const captionRanges: { from: number; duration: number }[] = []
+  let cursor = titleDurationInFrames - TRANSITION_FRAMES
+  segments.forEach((seg, i) => {
+    // 除最后一句外，每句砍掉与下一句转场重叠的那段，避免两句字幕并存
+    const trim = i < segments.length - 1 ? TRANSITION_FRAMES : 0
+    captionRanges.push({ from: cursor, duration: Math.max(1, seg.durationInFrames - trim) })
+    cursor += seg.durationInFrames - TRANSITION_FRAMES
+  })
+
   return (
     <AbsoluteFill style={{ backgroundColor: theme.bg }}>
+      {/* 画面轨：片头 / 逐句画面 / 片尾，句间 fade 丝滑溶解 */}
       <TransitionSeries>
         {/* 片头 */}
         <TransitionSeries.Sequence durationInFrames={titleDurationInFrames}>
@@ -227,18 +241,15 @@ export const CaptionedVideo: React.FC<CaptionedVideoProps> = ({
         {/* 片头 → 第一句：淡入 */}
         <TransitionSeries.Transition presentation={fade()} timing={timing} />
 
-        {/* 逐句：句与句之间轻横向滑动过渡 */}
+        {/* 逐句：句与句之间用交叉溶解（fade），画面丝滑过渡，不是 PPT 式翻页/推屏 */}
         {segments.map((seg, i) => (
           <React.Fragment key={i}>
             <TransitionSeries.Sequence durationInFrames={seg.durationInFrames}>
-              <CaptionCard segment={seg} index={i} total={segments.length} theme={theme} />
+              <CaptionCard segment={seg} theme={theme} />
               {seg.audioSrc ? <Audio src={resolveSrc(seg.audioSrc)} /> : null}
             </TransitionSeries.Sequence>
             {i < segments.length - 1 ? (
-              <TransitionSeries.Transition
-                presentation={slide({ direction: 'from-right' })}
-                timing={timing}
-              />
+              <TransitionSeries.Transition presentation={fade()} timing={timing} />
             ) : null}
           </React.Fragment>
         ))}
@@ -249,6 +260,16 @@ export const CaptionedVideo: React.FC<CaptionedVideoProps> = ({
           <OutroCard theme={theme} />
         </TransitionSeries.Sequence>
       </TransitionSeries>
+
+      {/* 字幕轨：独立于画面转场，按每句时间硬切显示，无淡入淡出、永不互相遮挡 */}
+      {segments.map((seg, i) => {
+        const r = captionRanges[i]
+        return (
+          <Sequence key={i} from={Math.max(0, r.from)} durationInFrames={r.duration}>
+            <CaptionText text={seg.text} />
+          </Sequence>
+        )
+      })}
     </AbsoluteFill>
   )
 }

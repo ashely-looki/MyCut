@@ -44,18 +44,19 @@ export type Scene = {
 // 中文字体：显式加载的 Noto Sans SC（+ 系统字兜底），见 ./fonts
 const FONT_STACK = CN_FONT_STACK
 
-// 元素入场动画：从 enterAt 那一帧起，弹入 + 上移 + 淡入
+// 元素入场动画：从 enterAt 那一帧起，带弹性地「跳」入 + 上移 + 淡入。
+// damping 调低 + stiffness 提高 → 有轻微回弹的活泼手感（不是平稳滑入）。
 const useEnter = (enterAtSeconds: number) => {
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
   const startFrame = Math.max(0, Math.round(enterAtSeconds * fps))
   const local = frame - startFrame
-  const enter = spring({ frame: local, fps, config: { damping: 200, mass: 0.7 } })
+  const enter = spring({ frame: local, fps, config: { damping: 12, mass: 0.7, stiffness: 130 } })
   const appeared = local >= 0
   return {
-    opacity: appeared ? interpolate(enter, [0, 1], [0, 1]) : 0,
-    translateY: interpolate(enter, [0, 1], [28, 0]),
-    scale: interpolate(enter, [0, 1], [0.86, 1]),
+    opacity: appeared ? interpolate(enter, [0, 1], [0, 1], { extrapolateRight: 'clamp' }) : 0,
+    translateY: interpolate(enter, [0, 1], [40, 0], { extrapolateRight: 'clamp' }),
+    scale: interpolate(enter, [0, 1], [0.8, 1]),
   }
 }
 
@@ -346,7 +347,11 @@ const AmbientBackground: React.FC<{ theme: SceneTheme }> = ({ theme }) => {
   )
 }
 
-export const SceneStage: React.FC<{ scene: Scene; theme: SceneTheme }> = ({ scene, theme }) => {
+export const SceneStage: React.FC<{ scene: Scene; theme: SceneTheme; overlay?: boolean }> = ({
+  scene,
+  theme,
+  overlay = false,
+}) => {
   const elements = scene.elements || []
   const layout = (() => {
     switch (scene.layout) {
@@ -364,7 +369,8 @@ export const SceneStage: React.FC<{ scene: Scene; theme: SceneTheme }> = ({ scen
 
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
-      <AmbientBackground theme={theme} />
+      {/* overlay 模式（叠在实拍视频上）：跳过浮动光斑背景，只留悬浮卡片，避免弄脏画面 */}
+      {overlay ? null : <AmbientBackground theme={theme} />}
       <div style={{ position: 'absolute', inset: 0 }}>
         {elements.length === 0 ? null : layout}
       </div>

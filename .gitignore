@@ -156,3 +156,9 @@ remotion/.remotion/
 # 设计钩子本地缓存(不入库)
 .impeccable/
 **/.impeccable/
+
+# 自动成片：测试产物与素材缓存(体积大、本地生成，不入库)
+backend_test_compose/
+remotion/public/compose/
+remotion/public/hf_cache/
+remotion/public/samples/

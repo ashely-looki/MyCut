@@ -94,6 +94,45 @@ def _accent_soft(accent: str, bg: str, dark: bool) -> str:
     return _mix(accent, bg, 0.86 if not dark else 0.80)
 
 
+def _vivid(hex_color: str, min_sat: float = 0.55, target_l: float = 0.5) -> str:
+    """把一个色提纯成鲜活的强调色：保留色相，拉高饱和度、把亮度拉到中间，适合当 accent。"""
+    import colorsys
+
+    r, g, b = (c / 255.0 for c in _to_rgb(hex_color))
+    h, l, s = colorsys.rgb_to_hls(r, g, b)
+    s = max(min_sat, s)
+    l = target_l  # 中等亮度，保证鲜艳且不过曝/过暗
+    r2, g2, b2 = colorsys.hls_to_rgb(h, l, s)
+    return f"#{round(r2 * 255):02X}{round(g2 * 255):02X}{round(b2 * 255):02X}"
+
+
+def probe_video_color(video_path) -> Optional[str]:
+    """
+    用 ffmpeg 从视频中段抽一帧、缩到 1x1 取平均色，返回 HEX。失败返回 None。
+    用于让叠加组件的配色呼应实拍画面色调。
+    """
+    from pathlib import Path
+    from ..utils.ffmpeg_utils import get_ffmpeg_path
+
+    video_path = Path(video_path)
+    if not video_path.exists():
+        return None
+    try:
+        import subprocess
+
+        proc = subprocess.run(
+            [get_ffmpeg_path(), "-y", "-ss", "1", "-i", str(video_path),
+             "-vframes", "1", "-vf", "scale=1:1", "-f", "rawvideo", "-pix_fmt", "rgb24", "-"],
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, timeout=20,
+        )
+        d = proc.stdout
+        if len(d) >= 3:
+            return f"#{d[0]:02X}{d[1]:02X}{d[2]:02X}"
+    except Exception as e:  # noqa: BLE001
+        logger.warning("抽取视频主色失败 %s: %s", video_path, e)
+    return None
+
+
 class ThemeService:
     def __init__(self) -> None:
         self.llm = LLMClient()
@@ -169,6 +208,26 @@ class ThemeService:
         # 序号圆里文字色：accent 上放白还是黑，取对比高者
         t["onAccent"] = white if _contrast(white, t["accent"]) >= _contrast(black, t["accent"]) else black
         return t
+
+    def theme_for_overlay(self, base: Dict[str, Any], video_color: Optional[str]) -> Dict[str, Any]:
+        """
+        为「叠在实拍视频上的组件」生成一套呼应画面色调的 theme。
+
+        - accent（强调色/图标/对比框）取自视频主色的鲜活版，让组件和画面同色系。
+        - 卡片底/文字仍用中性浅底深字（保证叠在任意画面上都清晰可读），不跟视频走暗，
+          否则深底卡片压在深色实拍上会糊成一片。
+        - 其余字段走 _derive 保证完整 + 对比度达标。
+        """
+        t = dict(base)
+        if video_color:
+            t["accent"] = _vivid(video_color)
+        # 叠加组件固定用浅色卡片（白底、暖浅底），在实拍上靠阴影浮起、清晰可读
+        t["bg"] = "#F6F5F3"
+        t["card"] = "#FFFFFF"
+        t["ink"] = "#1A1A19"
+        t["sub"] = "#6E6B66"
+        t["dark"] = False
+        return self._derive(t)
 
 
 _service: ThemeService | None = None

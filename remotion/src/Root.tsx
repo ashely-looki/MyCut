@@ -21,7 +21,10 @@ const DEFAULT_THEME = {
   dark: false,
 }
 
-// Studio 预览用的示例 props（渲染时被 --props 覆盖）
+// Studio 预览用的示例 props（渲染时被 --props 覆盖）。
+// 这里三句演示上区三种画面来源：实拍视频 / 静图推拉 / 结构化信息动画。
+// video/image 用公网示例素材，方便无本地素材时直接预览；换成自己的素材时，
+// 把文件放 remotion/public/ 下，visualSrc 改成相对路径即可（http/data 也直接支持）。
 const DEFAULT_PROPS: CaptionedVideoProps = {
   title: '为什么 AI 有时候搜不到你想要的东西',
   style: '科普',
@@ -29,9 +32,36 @@ const DEFAULT_PROPS: CaptionedVideoProps = {
   titleDurationInFrames: 2 * FPS,
   outroDurationInFrames: 2 * FPS,
   segments: [
-    { text: '你有没有发现，AI 有时候答非所问？', audioSrc: null, durationInFrames: 3 * FPS, role: 'hook' },
-    { text: '问题往往不在 AI，而在你的提问方式。', audioSrc: null, durationInFrames: 3 * FPS, role: 'body' },
-    { text: '记住这三个技巧，你也能成为提问高手。', audioSrc: null, durationInFrames: 3 * FPS, role: 'cta' },
+    {
+      // Higgsfield Kling 3.0 生成的荒漠空镜（5.04s，1920×1080），落在 public/samples/
+      text: '两年前，他独自驾车驶入了这片无人区。',
+      audioSrc: null,
+      visualType: 'video',
+      visualSrc: 'samples/desert-kling.mp4',
+      durationInFrames: 5 * FPS,
+      role: 'hook',
+    },
+    {
+      text: '问题往往不在 AI，而在你的提问方式。',
+      audioSrc: null,
+      visualType: 'image-kenburns',
+      visualSrc: 'https://picsum.photos/seed/mycut/1920/1080',
+      durationInFrames: 3 * FPS,
+      role: 'body',
+    },
+    {
+      text: '记住这三个技巧，你也能成为提问高手。',
+      audioSrc: null,
+      visualType: 'scene',
+      scene: {
+        layout: 'keyword',
+        elements: [
+          { type: 'keyword', text: '提问技巧', icon: 'sparkle', enterAt: 0, emphasis: true },
+        ],
+      },
+      durationInFrames: 3 * FPS,
+      role: 'cta',
+    },
   ],
 }
 

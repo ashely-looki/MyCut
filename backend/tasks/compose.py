@@ -83,7 +83,12 @@ def render_script_video(self, project_id: str, script_id: str, with_scene: bool 
         out_path = get_project_output_directory(project_id) / "compose.mp4"
 
         progress_cb(5, "准备中…")
-        compose_service.compose(script, workdir, out_path, job_id=project_id, progress_cb=progress_cb, with_scene=with_scene)
+        # with_video=None → compose 内部默认走实拍 + Remotion（用户点「生成视频」即得实拍成片，
+        # 零额外操作）；Higgsfield 不可用或某句不适合实拍时自动回退信息动画，不中断。
+        compose_service.compose(
+            script, workdir, out_path, job_id=project_id,
+            progress_cb=progress_cb, with_scene=with_scene, with_video=None,
+        )
 
         # 成片时长（用于 Clip 记录）
         total_seconds = int(round(_probe_duration(out_path))) or 1
