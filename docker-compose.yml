@@ -4,9 +4,10 @@
 # （AUTOCLIP_DESKTOP_MODE=1），因此无需 Redis / Celery worker，适合单机低成本部署。
 # 将来要多副本 / 抗并发，再拆成 API + Celery worker + Redis 三件套。
 #
-# 用法：
+# 用法（推荐直接跑 deploy/aliyun-setup.sh，它已带 --env-file）：
 #   1) 复制 .env.production.example 为 .env.production 并填好（LLM key、支付宝、Supabase 等）
-#   2) docker compose up -d --build
+#   2) docker compose --env-file .env.production up -d --build
+#      （必须带 --env-file，否则前端 Supabase 构建变量取不到 → 登录门不显示）
 #   3) 浏览器访问 http://<服务器IP>/  （前端 80 端口）
 
 services:
@@ -36,6 +37,14 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.frontend
+      # 前端 Vite 变量是「构建时」注入的（打包进静态文件）。这里从 .env.production
+      # 取值传进构建：配了 VITE_SUPABASE_* 前端才显示登录门。
+      # 注意：需用 `docker compose --env-file .env.production up --build`（一键脚本已带），
+      # 否则 compose 变量替换默认只读根 .env，取不到这些值。
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-}
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
     depends_on:
       - backend
     ports:

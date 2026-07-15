@@ -86,8 +86,10 @@ fi
 log "使用 compose 命令：$COMPOSE"
 
 # ---------- 3. 构建并启动 ----------
+# --env-file 让 .env.production 既作后端运行时变量，又作 compose 变量替换源
+# （前端 Supabase 构建变量靠它注入，否则登录门不显示）。
 log "构建镜像并启动（首次较久：装 Remotion + 下 Chromium）"
-$COMPOSE up -d --build
+$COMPOSE --env-file .env.production up -d --build
 
 log "完成。查看状态： $COMPOSE ps"
 log "查看后端日志： $COMPOSE logs -f backend"

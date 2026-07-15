@@ -11,7 +11,19 @@ RUN npm ci --no-audit --no-fund 2>/dev/null || npm install --no-audit --no-fund
 
 # 再拷源码构建
 COPY frontend/ ./
-# 同源部署：不设 VITE_API_BASE_URL，前端走相对路径 /api/v1，由 nginx 反代。
+
+# 构建时注入的 Vite 变量（import.meta.env.* 在打包时被替换成字面量）：
+# - VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY：配了才显示登录门（前端靠这两个判断
+#   authEnabled，见 frontend/src/lib/supabase.ts）。不配则前端不显示登录、直接进应用。
+# - VITE_API_BASE_URL：同源部署留空（走相对 /api/v1，nginx 反代）；前后端分离才填。
+# 这些由 docker-compose.yml 的 frontend.build.args 从 .env.production 传入。
+ARG VITE_SUPABASE_URL=""
+ARG VITE_SUPABASE_ANON_KEY=""
+ARG VITE_API_BASE_URL=""
+ENV VITE_SUPABASE_URL=$VITE_SUPABASE_URL \
+    VITE_SUPABASE_ANON_KEY=$VITE_SUPABASE_ANON_KEY \
+    VITE_API_BASE_URL=$VITE_API_BASE_URL
+
 RUN npm run build
 
 # --- 运行阶段：nginx 托管静态产物 ---
