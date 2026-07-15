@@ -56,6 +56,23 @@ export type WebSocketEventMessage =
   | ErrorNotificationMessage
   | TaskProgressUpdateMessage;
 
+// WebSocket 基地址（进度推送 /api/v1/ws/<userId>）。部署可配，优先级：
+//  1) VITE_API_BASE_URL（前后端分离部署）：把 http(s) 换成 ws(s)，拼 /api/v1
+//  2) 生产同源（nginx 反代 /api/v1/ws 的 upgrade）：按当前页面协议/域名推导
+//  3) 本地开发（vite :3000，后端 :8000，dev proxy 不代理 ws）：直连 localhost:8000
+function resolveWsBase(): string {
+  const raw = (import.meta as any).env?.VITE_API_BASE_URL as string | undefined;
+  if (raw && raw.trim()) {
+    const base = raw.trim().replace(/\/+$/, '').replace(/^http/i, 'ws');
+    return `${base}/api/v1`;
+  }
+  if ((import.meta as any).env?.DEV) {
+    return 'ws://localhost:8000/api/v1';
+  }
+  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${proto}//${window.location.host}/api/v1`;
+}
+
 interface UseWebSocketOptions {
   userId: string;
   onMessage?: (message: WebSocketEventMessage) => void;
@@ -148,7 +165,7 @@ export const useWebSocket = (options: UseWebSocketOptions) => {
     }
 
     setConnectionStatus('connecting');
-    const wsUrl = `ws://localhost:8000/api/v1/ws/${userId}`;
+    const wsUrl = `${resolveWsBase()}/ws/${userId}`;
     
     try {
       const ws = new WebSocket(wsUrl);

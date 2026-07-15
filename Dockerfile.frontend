@@ -1,0 +1,22 @@
+# MyCut 前端镜像：vite build 出静态站，用 nginx 托管，并把 /api、/health、WebSocket
+# 反代到后端容器（同源部署，前端不用配 VITE_API_BASE_URL）。
+
+# --- 构建阶段 ---
+FROM node:20-slim AS build
+WORKDIR /app/frontend
+
+# 先装依赖（利用层缓存）
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm ci --no-audit --no-fund 2>/dev/null || npm install --no-audit --no-fund
+
+# 再拷源码构建
+COPY frontend/ ./
+# 同源部署：不设 VITE_API_BASE_URL，前端走相对路径 /api/v1，由 nginx 反代。
+RUN npm run build
+
+# --- 运行阶段：nginx 托管静态产物 ---
+FROM nginx:1.27-alpine
+COPY deploy/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/frontend/dist /usr/share/nginx/html
+EXPOSE 80
+CMD ["nginx", "-g", "daemon off;"]

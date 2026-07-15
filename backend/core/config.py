@@ -46,6 +46,12 @@ class Settings(BaseSettings):
     debug: bool = Field(default=True, validation_alias=AliasChoices('DEBUG'))
     encryption_key: str = Field(default='', validation_alias=AliasChoices('ENCRYPTION_KEY'))
 
+    # ---- CORS ----
+    # 逗号分隔的允许来源，例如 "https://mycut.example.com,https://www.mycut.example.com"。
+    # 同源部署（nginx 把 /api 反代到后端）时前后端同域，浏览器不发跨域请求，可留空。
+    # 仅前后端分离部署（前端与后端不同域）时才需要填。留空 = 不放行任何跨域来源。
+    cors_allow_origins: str = Field(default='', validation_alias=AliasChoices('CORS_ALLOW_ORIGINS'))
+
     # 直接定义字段，不使用嵌套的BaseModel
     database_url: str = Field(default='sqlite:///./data/autoclip.db', validation_alias=AliasChoices('DATABASE_URL'))
     redis_url: str = Field(default='redis://localhost:6379/0', validation_alias=AliasChoices('REDIS_URL'))
@@ -175,6 +181,13 @@ def get_alipay_config() -> Dict[str, Any]:
         "return_url": settings.alipay_return_url,
         "month_price": settings.membership_month_price,
     }
+
+def get_cors_allow_origins() -> list:
+    """解析 CORS 允许来源（逗号分隔）。返回列表；留空返回 []（不放行跨域）。"""
+    raw = (settings.cors_allow_origins or '').strip()
+    if not raw:
+        return []
+    return [o.strip() for o in raw.split(',') if o.strip()]
 
 def get_model_config() -> Dict[str, Any]:
     """获取模型配置"""

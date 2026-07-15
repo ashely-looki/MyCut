@@ -1,0 +1,84 @@
+# MyCut 后端镜像：FastAPI + FFmpeg + Node/Remotion(含 headless Chromium) + edge-tts
+#
+# 关键点（都是踩过的坑）：
+# - Remotion 的 compositor 和 chrome-headless-shell 是「按平台」的二进制，Mac 上的
+#   remotion/node_modules 不能 COPY 进来，必须在 Linux 层重新 npm install，让 npm 装对
+#   平台的 @remotion/compositor-linux-*，并用 `npx remotion browser ensure` 预下载 Chromium。
+# - headless Chromium 在 Linux 需要一堆系统 .so；中文字幕需要 fonts-noto-cjk，否则渲染成方块。
+# - node/npx/ffmpeg/ffprobe/curl 走 PATH 即可（后端代码用 shutil.which 查找，无需改路径）。
+# - 任务执行走「桌面语义后台线程」（AUTOCLIP_DESKTOP_MODE=1），单容器免 Redis/Celery worker。
+
+FROM python:3.10-slim-bookworm
+
+# 国内源开关：默认 0 走官方源（海外服务器/本机直连快）。
+# 国内机房构建慢时用 --build-arg CN_MIRROR=1 切阿里云 apt / 阿里云 PyPI / npmmirror。
+ARG CN_MIRROR=0
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    DEBIAN_FRONTEND=noninteractive \
+    NODE_MAJOR=20
+
+# CN_MIRROR=1 时把 apt 源换成阿里云（Debian bookworm）
+RUN if [ "$CN_MIRROR" = "1" ]; then \
+        sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors.aliyun.com|g' \
+            /etc/apt/sources.list.d/debian.sources 2>/dev/null || \
+        sed -i 's|deb.debian.org|mirrors.aliyun.com|g; s|security.debian.org|mirrors.aliyun.com|g' \
+            /etc/apt/sources.list 2>/dev/null || true; \
+    fi
+
+# --- 系统依赖：ffmpeg、curl、Node 20、headless Chromium 运行库、中文字体 ---
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates curl gnupg \
+        ffmpeg \
+        # headless Chromium（Remotion 渲染）所需的运行时库
+        libnss3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 libxkbcommon0 \
+        libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 libasound2 \
+        libpango-1.0-0 libcairo2 libatspi2.0-0 libx11-6 libxcb1 libxext6 libxi6 \
+        # 中文字体：Remotion/Chromium 渲染中文字幕必须，否则显示方块
+        fonts-noto-cjk fonts-noto-color-emoji \
+    && mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+        | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${NODE_MAJOR}.x nodistro main" \
+        > /etc/apt/sources.list.d/nodesource.list \
+    && apt-get update && apt-get install -y --no-install-recommends nodejs \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# --- Python 依赖（先装依赖，利用层缓存）---
+COPY requirements.txt ./
+RUN if [ "$CN_MIRROR" = "1" ]; then \
+        pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ -r requirements.txt; \
+    else \
+        pip install --no-cache-dir -r requirements.txt; \
+    fi
+
+# --- Remotion（Node）：只拷 package.json 先装依赖，再拷源码 ---
+# 在 Linux 层重装，拿到 @remotion/compositor-linux-*；再预下载 headless Chromium。
+COPY remotion/package.json remotion/package-lock.json* ./remotion/
+RUN if [ "$CN_MIRROR" = "1" ]; then npm config set registry https://registry.npmmirror.com; fi \
+    && cd remotion && (npm ci --no-audit --no-fund 2>/dev/null || npm install --no-audit --no-fund)
+COPY remotion/ ./remotion/
+# 预下载 Remotion 用的 chrome-headless-shell（Linux 版），避免首次渲染时联网慢/脆
+RUN cd remotion && npx remotion browser ensure || echo "chrome ensure 失败，将在首次渲染时下载"
+
+# --- 后端源码 ---
+COPY backend/ ./backend/
+COPY prompt/ ./prompt/
+
+# 数据目录（compose 里会挂持久卷覆盖）；显式指定，避免依赖工作目录推断。
+ENV AUTOCLIP_DATA_DIR=/app/data
+RUN mkdir -p /app/data
+
+# get_project_root() 靠「同级同时存在 frontend/ 和 backend/」来定位工程根（path_utils.py）。
+# 后端镜像不含前端源码，这里放一个空 frontend/ 占位，让工程根稳定锚定到 /app，
+# 从而 remotion/ 目录被正确解析为 /app/remotion（否则靠回退路径侥幸命中，脆弱）。
+RUN mkdir -p /app/frontend
+
+EXPOSE 8000
+
+# web 模式入口（CORS/同源），但任务走桌面语义后台线程（compose 里设 AUTOCLIP_DESKTOP_MODE=1）
+CMD ["python", "-m", "backend.main", "--port", "8000"]

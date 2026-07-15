@@ -12,7 +12,7 @@ from backend.api.v1 import api_router
 from backend.api.v1.health import router as health_router
 from backend.core.database import engine
 from backend.models.base import Base
-from backend.core.config import get_logging_config, get_api_key
+from backend.core.config import get_logging_config, get_api_key, get_cors_allow_origins
 from backend.core.error_middleware import global_exception_handler
 
 logger = logging.getLogger(__name__)
@@ -51,13 +51,22 @@ def create_app(mode: str = "web") -> FastAPI:
     app.state.mode = mode
     
     # 配置 CORS
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],  # 生产环境需要配置具体域名
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
+    # - 同源部署（nginx 反代 /api 到后端，前后端同域）：CORS_ALLOW_ORIGINS 留空，
+    #   浏览器不发跨域请求，无需放行，最安全。
+    # - 前后端分离部署：CORS_ALLOW_ORIGINS 填精确域名（逗号分隔）。
+    # 注意：allow_origins=["*"] 与 allow_credentials=True 是浏览器非法组合，不再使用。
+    cors_origins = get_cors_allow_origins()
+    if cors_origins:
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=cors_origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+        logger.info(f"CORS 已放行来源: {cors_origins}")
+    else:
+        logger.info("CORS 未配置放行来源（同源部署或本地开发经 vite 代理）")
     
     # 注册全局异常处理器
     app.add_exception_handler(Exception, global_exception_handler)

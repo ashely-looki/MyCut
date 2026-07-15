@@ -317,6 +317,12 @@ def render(workdir: Path, out_path: Path, progress_cb: ProgressCb = None) -> Non
         # headless Chromium 冷启动 / 加载字体等资源常超过默认 30s，放宽到 120s，避免误判超时
         "--timeout=120000",
     ]
+    # 限制渲染并发：Remotion 默认按 CPU 核数自动放大，每个并发是一个 headless
+    # Chromium 实例（1080p 下每个吃 0.3~0.7G 内存）。小内存服务器（如 2核4G）上
+    # 不限制会被撑爆 OOM。默认压到 2，可用 REMOTION_CONCURRENCY 覆盖（大机器放开）。
+    concurrency = os.environ.get("REMOTION_CONCURRENCY", "2").strip()
+    if concurrency:
+        cmd.append(f"--concurrency={concurrency}")
     logger.info(f"开始 Remotion 渲染: {' '.join(cmd)} (cwd={remotion_dir})")
 
     try:

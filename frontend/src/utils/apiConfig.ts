@@ -9,10 +9,22 @@ interface ApiConfig {
   isReady: boolean;
 }
 
+// 部署可配的 API 基地址：
+// - 同源部署（nginx 把 /api 反代到后端）：留空，用相对路径 '/api/v1' 即可。
+// - 前后端分离部署（如前端上静态托管、后端另一个域名）：构建时设
+//   VITE_API_BASE_URL=https://api.example.com ，这里拼成 '<origin>/api/v1'。
+function resolveDefaultBaseUrl(): string {
+  const raw = (import.meta as any).env?.VITE_API_BASE_URL as string | undefined;
+  if (raw && raw.trim()) {
+    return raw.trim().replace(/\/+$/, '') + '/api/v1';
+  }
+  return '/api/v1';
+}
+
 class ApiConfigManager {
   private static instance: ApiConfigManager;
   private config: ApiConfig = {
-    baseUrl: '/api/v1',
+    baseUrl: resolveDefaultBaseUrl(),
     port: 0,
     isReady: false
   };

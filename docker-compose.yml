@@ -1,0 +1,47 @@
+# MyCut 单机部署：前端(nginx) + 后端(FastAPI，含 FFmpeg/Remotion)。
+#
+# 运行形态：单后端容器，用「桌面语义后台线程」执行切片/成片任务
+# （AUTOCLIP_DESKTOP_MODE=1），因此无需 Redis / Celery worker，适合单机低成本部署。
+# 将来要多副本 / 抗并发，再拆成 API + Celery worker + Redis 三件套。
+#
+# 用法：
+#   1) 复制 .env.production.example 为 .env.production 并填好（LLM key、支付宝、Supabase 等）
+#   2) docker compose up -d --build
+#   3) 浏览器访问 http://<服务器IP>/  （前端 80 端口）
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    env_file:
+      - .env.production
+    environment:
+      # 用桌面语义在容器内跑后台线程任务，免 Redis。
+      AUTOCLIP_DESKTOP_MODE: "1"
+      AUTOCLIP_DATA_DIR: /app/data
+    volumes:
+      # 数据持久化：SQLite、上传、切片、成片产物都在这里，别随容器销毁而丢。
+      - mycut_data:/app/data
+      # 成片时 edge-tts 配音会临时落在 remotion/public/compose 下，持久化避免重建镜像时丢缓存。
+      - mycut_remotion_public:/app/remotion/public
+      # 支付宝私钥/公钥 PEM（只读挂载，不进镜像、不入库）。没接支付可删掉这行。
+      - ./secrets:/app/secrets:ro
+    restart: unless-stopped
+    # 后端不对外暴露端口，只经 nginx 反代（如需直连调试可临时打开 ports）
+    expose:
+      - "8000"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    restart: unless-stopped
+
+volumes:
+  mycut_data:
+  mycut_remotion_public:

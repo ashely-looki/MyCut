@@ -1,0 +1,65 @@
+# 构建上下文瘦身 + 避免把宿主机(macOS)二进制带进 Linux 镜像。
+# 关键：remotion/node_modules 和 frontend/node_modules 是按平台的，必须在镜像里重装，
+# 绝不能从 Mac COPY 进去（否则 @remotion/compositor-darwin-arm64 / mac 版 chromium 进容器）。
+
+# Node 依赖（镜像内 npm ci 重装）
+**/node_modules
+remotion/node_modules
+remotion/.remotion
+remotion/out
+frontend/node_modules
+frontend/dist
+frontend/.vite
+
+# Python 环境与缓存
+venv/
+env/
+.venv/
+venv_*/
+__pycache__/
+**/__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+
+# 运行期数据（用持久卷，不进镜像）
+data/
+backend/data/
+*.db
+*.sqlite
+*.sqlite3
+
+# 密钥（compose 里以只读卷挂载，不进镜像、不入库）
+secrets/
+*.pem
+.env
+.env.local
+.env.production
+
+# 大媒体文件（构建不需要）
+*.mp4
+*.mkv
+*.mov
+*.mp3
+*.wav
+backend_test_compose/
+remotion/public/compose/
+remotion/public/hf_cache/
+remotion/public/samples/
+
+# 桌面壳 / 打包产物（Web 部署用不到）
+src-tauri/
+build/
+dist/
+releases/
+
+# 日志、系统与 IDE
+*.log
+logs/
+.DS_Store
+.vscode/
+.idea/
+.git/
+.impeccable/
+**/.impeccable/
