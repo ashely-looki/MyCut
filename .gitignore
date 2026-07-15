@@ -114,6 +114,10 @@ Thumbs.db
 *.swo
 *~
 
+# 密钥文件（支付宝应用私钥 / 支付宝公钥等，绝不入仓）
+secrets/
+*.pem
+
 # 环境变量文件
 .env
 .env.local

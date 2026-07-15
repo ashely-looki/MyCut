@@ -8,6 +8,10 @@ pydantic
 pydantic-settings
 python-multipart
 websockets
+# Supabase 认证：后端校验前端传来的 Supabase JWT（HS256）
+pyjwt>=2.8.0
+# 支付宝支付：官方 Python SDK（电脑网站支付 alipay.trade.page.pay）
+alipay-sdk-python>=3.7.0
 requests
 aiohttp
 aiofiles

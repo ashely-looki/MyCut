@@ -2,6 +2,7 @@ import axios from 'axios'
 import { Project, Clip, Collection } from '../store/useProjectStore'
 import { errorHandler } from '../utils/errorHandler'
 import { apiConfigManager } from '../utils/apiConfig'
+import { getAuthToken } from '../context/authTokenStore'
 import {
   trackVideoImported,
   trackClipsExported,
@@ -62,6 +63,14 @@ api.interceptors.request.use(
     }
 
     config.baseURL = apiConfigManager.getBaseUrl()
+
+    // 带上 Supabase 登录 token（未登录 / 未启用认证时为 null，则不加）
+    const token = getAuthToken()
+    if (token) {
+      config.headers = config.headers ?? {}
+      config.headers.Authorization = `Bearer ${token}`
+    }
+
     // 添加请求ID用于追踪
     config.metadata = { startTime: Date.now() }
     return config
@@ -672,6 +681,36 @@ export const speechApi = {
   getModels: (): Promise<WhisperModel[]> => api.get('/whisper-models'),
   downloadModel: (model: string): Promise<unknown> => api.post('/whisper-models/download', { model }),
   deleteModel: (model: string): Promise<unknown> => api.delete(`/whisper-models/${model}`),
+}
+
+// ---- 支付宝支付 / 会员 ----
+export interface CreateOrderResponse {
+  out_trade_no: string
+  pay_form_html: string
+  amount: string
+}
+
+export interface OrderStatus {
+  out_trade_no: string
+  status: 'pending' | 'paid' | 'closed' | 'failed'
+  amount: string
+  paid_at: string | null
+}
+
+export interface Membership {
+  is_member: boolean
+  expires_at: string | null
+}
+
+export const payApi = {
+  // 创建会员订单，返回自动提交的支付宝表单 HTML
+  createAlipayOrder: (months = 1): Promise<CreateOrderResponse> =>
+    api.post('/pay/alipay/create', { months }),
+  // 查询订单状态（后端在 pending 时会主动向支付宝反查兜底）
+  getOrderStatus: (outTradeNo: string): Promise<OrderStatus> =>
+    api.get(`/pay/orders/${outTradeNo}`),
+  // 当前用户会员状态
+  getMembership: (): Promise<Membership> => api.get('/pay/membership'),
 }
 
 export default api

@@ -8,6 +8,7 @@ from .clip import Clip
 from .collection import Collection
 from .task import Task, TaskStatus, TaskType
 from .script import Script
+from .order import Order, OrderStatus, UserMembership
 
 __all__ = [
     "Base",
@@ -19,4 +20,7 @@ __all__ = [
     "TaskStatus",
     "TaskType",
     "Script",
+    "Order",
+    "OrderStatus",
+    "UserMembership",
 ]

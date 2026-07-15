@@ -31,13 +31,17 @@ class ProjectService(BaseService[Project, ProjectCreate, ProjectUpdate, ProjectR
         super().__init__(repository)
         self.db = db
     
-    def create_project(self, project_data: ProjectCreate) -> Project:
-        """Create a new project with business logic."""
+    def create_project(self, project_data: ProjectCreate, user_id: Optional[str] = None) -> Project:
+        """Create a new project with business logic.
+
+        user_id：项目归属用户（Supabase user id）。用于项目按用户隔离。
+        """
         # Convert Pydantic schema to dict for repository
         project_dict = project_data.model_dump()
-        
+
         # Map Pydantic fields to ORM fields
         orm_data = {
+            "user_id": user_id,  # 归属用户，供后续按用户过滤
             "name": project_dict["name"],
             "description": project_dict.get("description"),
             "project_type": project_dict.get("project_type", "default").value if hasattr(project_dict.get("project_type", "default"), 'value') else project_dict.get("project_type", "default"),  # Map project_type to project_type
@@ -46,8 +50,22 @@ class ProjectService(BaseService[Project, ProjectCreate, ProjectUpdate, ProjectR
             "processing_config": project_dict.get("settings", {}),  # Map settings to processing_config
             "project_metadata": {"source_url": project_dict.get("source_url")}  # Map source_url to metadata
         }
-        
+
         return self.create(**orm_data)
+
+    def get_owned(self, project_id: str, user_id: Optional[str]) -> Optional[Project]:
+        """按归属校验地取项目。
+
+        - user_id 为 None（未开启认证）：不做归属校验，退回按 id 取。
+        - user_id 有值：项目不属于该用户时返回 None（对外等价 404，不泄露他人数据）。
+          兼容 user_id 为空的老项目（视为公共，任何登录用户可见）。
+        """
+        project = self.get(project_id)
+        if not project:
+            return None
+        if user_id is not None and project.user_id not in (None, user_id):
+            return None
+        return project
     
     def update_project(self, project_id: str, project_data: ProjectUpdate) -> Optional[Project]:
         """Update a project with business logic."""
@@ -68,12 +86,12 @@ class ProjectService(BaseService[Project, ProjectCreate, ProjectUpdate, ProjectR
         
         return self.update(project_id, **orm_data)
     
-    def get_project_with_stats(self, project_id: str) -> Optional[ProjectResponse]:
-        """Get project with statistics."""
-        project = self.get(project_id)
+    def get_project_with_stats(self, project_id: str, user_id: Optional[str] = None) -> Optional[ProjectResponse]:
+        """Get project with statistics（按 user_id 归属校验）。"""
+        project = self.get_owned(project_id, user_id)
         if not project:
             return None
-        
+
         # Get actual statistics from database
         from ..models.clip import Clip
         from ..models.collection import Collection
@@ -104,19 +122,54 @@ class ProjectService(BaseService[Project, ProjectCreate, ProjectUpdate, ProjectR
         )
     
     def get_projects_paginated(
-        self, 
+        self,
         pagination: PaginationParams,
-        filters: Optional[ProjectFilter] = None
+        filters: Optional[ProjectFilter] = None,
+        user_id: Optional[str] = None
     ) -> ProjectListResponse:
-        """Get paginated projects with filtering."""
-        # Convert filters to dict
-        filter_dict = {}
+        """Get paginated projects with filtering（按 user_id 隔离）。"""
+        from sqlalchemy import desc, or_
+
+        # 直接构造带 user_id 过滤 + 排序 + 搜索的查询，
+        # 不复用父类 exact-match 的 find_by（它会静默丢掉 search，且不带排序）。
+        query = self.db.query(Project)
+
+        # 按用户隔离：user_id 有值时只看自己的（含 user_id 为空的老公共项目）。
+        if user_id is not None:
+            query = query.filter(or_(Project.user_id == user_id, Project.user_id.is_(None)))
+
         if filters:
-            filter_data = filters.model_dump()
-            filter_dict = {k: v for k, v in filter_data.items() if v is not None}
-        
-        items, pagination_response = self.get_paginated(pagination, filter_dict)
-        
+            if filters.status is not None:
+                status_val = filters.status.value if hasattr(filters.status, 'value') else filters.status
+                query = query.filter(Project.status == status_val)
+            if filters.project_type is not None:
+                ptype_val = filters.project_type.value if hasattr(filters.project_type, 'value') else filters.project_type
+                query = query.filter(Project.project_type == ptype_val)
+            if filters.search:
+                kw = f"%{filters.search}%"
+                query = query.filter(
+                    or_(Project.name.ilike(kw), Project.description.ilike(kw))
+                )
+
+        total = query.count()
+        skip = (pagination.page - 1) * pagination.size
+        items = (
+            query.order_by(desc(Project.created_at))
+            .offset(skip)
+            .limit(pagination.size)
+            .all()
+        )
+
+        pages = (total + pagination.size - 1) // pagination.size
+        pagination_response = PaginationResponse(
+            page=pagination.page,
+            size=pagination.size,
+            total=total,
+            pages=pages,
+            has_next=pagination.page < pages,
+            has_prev=pagination.page > 1,
+        )
+
         # Convert to response schemas
         project_responses = []
         for project in items:
@@ -215,21 +268,22 @@ class ProjectService(BaseService[Project, ProjectCreate, ProjectUpdate, ProjectR
         
         return local_time
     
-    def delete_project_with_files(self, project_id: str) -> bool:
+    def delete_project_with_files(self, project_id: str, user_id: Optional[str] = None) -> bool:
         """
-        删除项目及其所有相关数据
-        
+        删除项目及其所有相关数据（按 user_id 归属校验）
+
         Args:
             project_id: 项目ID
-            
+            user_id: 当前登录用户ID；有值时只能删自己的项目
+
         Returns:
             是否删除成功
         """
         try:
-            # 获取项目信息
-            project = self.get(project_id)
+            # 获取项目信息（带归属校验，防止删他人项目）
+            project = self.get_owned(project_id, user_id)
             if not project:
-                logger.warning(f"项目 {project_id} 不存在")
+                logger.warning(f"项目 {project_id} 不存在或无权访问")
                 return False
             
             logger.info(f"开始删除项目 {project_id}: {project.name}")

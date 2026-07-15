@@ -31,11 +31,20 @@ class Project(BaseModel):
     """项目模型"""
     
     __tablename__ = "projects"
-    
+
+    # 归属用户（Supabase user 的 uuid / sub）。
+    # nullable=True 是为了兼容认证启用前创建的老项目；index 便于按用户过滤。
+    user_id = Column(
+        String(64),
+        nullable=True,
+        index=True,
+        comment="归属用户ID（Supabase user id），用于项目按用户隔离"
+    )
+
     # 基本信息
     name = Column(
-        String(255), 
-        nullable=False, 
+        String(255),
+        nullable=False,
         comment="项目名称"
     )
     description = Column(

@@ -61,6 +61,38 @@ class Settings(BaseSettings):
     log_format: str = Field(default='%(asctime)s - %(name)s - %(levelname)s - %(message)s', validation_alias=AliasChoices('LOG_FORMAT'))
     log_file: str = Field(default='backend.log', validation_alias=AliasChoices('LOG_FILE'))
 
+    # ---- Supabase 认证（注册/登录）----
+    # 说明：前端用 Supabase JS 登录并携带 access_token；后端用下面的 JWT secret
+    # 校验该 token（HS256），取出真实 user_id 做项目隔离。
+    # auth_enabled=false 时后端不强制登录（老数据/本地调试兼容）。
+    supabase_url: str = Field(default='', validation_alias=AliasChoices('SUPABASE_URL'))
+    supabase_jwt_secret: str = Field(default='', validation_alias=AliasChoices('SUPABASE_JWT_SECRET'))
+    auth_enabled: bool = Field(default=False, validation_alias=AliasChoices('AUTH_ENABLED'))
+
+    # ---- 支付宝支付（电脑网站支付 alipay.trade.page.pay）----
+    # 沙箱调试：ALIPAY_ENABLED=true 且填了 APPID + 应用私钥 + 支付宝公钥时才启用支付接口。
+    # 私钥/公钥是多行 PEM，推荐用「文件路径」方式（*_KEY_PATH），避免 .env 里塞多行；
+    # 也支持直接把 PEM 内容填进 *_KEY（换行用 \n）。二者都填时优先用文件路径。
+    alipay_enabled: bool = Field(default=False, validation_alias=AliasChoices('ALIPAY_ENABLED'))
+    alipay_app_id: str = Field(default='', validation_alias=AliasChoices('ALIPAY_APP_ID'))
+    # 网关：沙箱 https://openapi-sandbox.dl.alipaydev.com/gateway.do；生产 https://openapi.alipay.com/gateway.do
+    alipay_server_url: str = Field(
+        default='https://openapi-sandbox.dl.alipaydev.com/gateway.do',
+        validation_alias=AliasChoices('ALIPAY_SERVER_URL'))
+    alipay_sign_type: str = Field(default='RSA2', validation_alias=AliasChoices('ALIPAY_SIGN_TYPE'))
+    # 应用私钥（商户自己生成，签名用）
+    alipay_app_private_key: str = Field(default='', validation_alias=AliasChoices('ALIPAY_APP_PRIVATE_KEY'))
+    alipay_app_private_key_path: str = Field(default='', validation_alias=AliasChoices('ALIPAY_APP_PRIVATE_KEY_PATH'))
+    # 支付宝公钥（支付宝提供，验签用）
+    alipay_public_key: str = Field(default='', validation_alias=AliasChoices('ALIPAY_PUBLIC_KEY'))
+    alipay_public_key_path: str = Field(default='', validation_alias=AliasChoices('ALIPAY_PUBLIC_KEY_PATH'))
+    # 支付宝服务器异步通知本笔支付结果的地址（必须公网可达；沙箱本地可用内网穿透）
+    alipay_notify_url: str = Field(default='', validation_alias=AliasChoices('ALIPAY_NOTIFY_URL'))
+    # 付款完成后浏览器同步跳回的地址（仅用于展示，不作发货依据）
+    alipay_return_url: str = Field(default='', validation_alias=AliasChoices('ALIPAY_RETURN_URL'))
+    # 会员单价（元/月），先写死一个月会员套餐
+    membership_month_price: str = Field(default='98.00', validation_alias=AliasChoices('MEMBERSHIP_MONTH_PRICE'))
+
 # 全局配置实例
 settings = Settings()
 
@@ -101,6 +133,48 @@ def get_redis_url() -> str:
 def get_api_key() -> Optional[str]:
     """获取API密钥"""
     return settings.api_dashscope_api_key if settings.api_dashscope_api_key else None
+
+def get_supabase_config() -> Dict[str, Any]:
+    """获取 Supabase 认证配置"""
+    return {
+        "url": settings.supabase_url,
+        "jwt_secret": settings.supabase_jwt_secret,
+        # 显式开启，且至少有一种验签依据：
+        # - URL（走 JWKS 公钥验签，ES256/RS256，新版 Supabase 默认）
+        # - JWT secret（走 HS256，老项目/回退）
+        "auth_enabled": settings.auth_enabled and bool(settings.supabase_url or settings.supabase_jwt_secret),
+    }
+
+def _load_key(inline: str, path: str) -> str:
+    """读取 PEM 密钥：优先文件路径，其次内联（内联里 \\n 还原为真换行）。"""
+    if path:
+        try:
+            return Path(path).expanduser().read_text(encoding='utf-8').strip()
+        except OSError:
+            return ''
+    if inline:
+        return inline.replace('\\n', '\n').strip()
+    return ''
+
+def get_alipay_config() -> Dict[str, Any]:
+    """获取支付宝支付配置。
+
+    enabled：显式开启且 APPID/应用私钥/支付宝公钥齐全时才算真正可用。
+    private_key/public_key：已解析成 PEM 文本，可直接喂给 SDK。
+    """
+    private_key = _load_key(settings.alipay_app_private_key, settings.alipay_app_private_key_path)
+    public_key = _load_key(settings.alipay_public_key, settings.alipay_public_key_path)
+    return {
+        "enabled": settings.alipay_enabled and bool(settings.alipay_app_id and private_key and public_key),
+        "app_id": settings.alipay_app_id,
+        "server_url": settings.alipay_server_url,
+        "sign_type": settings.alipay_sign_type,
+        "app_private_key": private_key,
+        "alipay_public_key": public_key,
+        "notify_url": settings.alipay_notify_url,
+        "return_url": settings.alipay_return_url,
+        "month_price": settings.membership_month_price,
+    }
 
 def get_model_config() -> Dict[str, Any]:
     """获取模型配置"""

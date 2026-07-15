@@ -8,6 +8,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form
 from sqlalchemy.orm import Session
 from backend.core.database import get_db
+from backend.core.auth import get_current_user_id, require_user_id
 from backend.services.project_service import ProjectService
 from backend.services.processing_service import ProcessingService
 from backend.services.websocket_notification_service import WebSocketNotificationService
@@ -47,7 +48,8 @@ async def upload_files(
     project_name: str = Form(...),
     video_category: Optional[str] = Form(None),
     script_json: Optional[str] = Form(None),
-    project_service: ProjectService = Depends(get_project_service)
+    project_service: ProjectService = Depends(get_project_service),
+    user_id: str = Depends(require_user_id)
 ):
     """Upload video file and optional subtitle file to create a new project. If no subtitle is provided, Whisper will automatically generate one.
 
@@ -79,9 +81,9 @@ async def upload_files(
             }
         )
         
-        # 创建项目
-        project = project_service.create_project(project_data)
-        
+        # 创建项目（归属到当前登录用户）
+        project = project_service.create_project(project_data, user_id=user_id)
+
         # 保存文件到项目目录
         project_id = str(project.id)
         from ...core.path_utils import get_project_raw_directory
@@ -204,11 +206,12 @@ async def upload_files(
 @router.post("/", response_model=ProjectResponse)
 async def create_project(
     project_data: ProjectCreate,
-    project_service: ProjectService = Depends(get_project_service)
+    project_service: ProjectService = Depends(get_project_service),
+    user_id: str = Depends(require_user_id)
 ):
     """Create a new project."""
     try:
-        project = project_service.create_project(project_data)
+        project = project_service.create_project(project_data, user_id=user_id)
         # Convert to response (simplified for now)
         return ProjectResponse(
             id=str(project.id),  # Use actual project ID
@@ -238,7 +241,8 @@ async def get_projects(
     status: Optional[str] = Query(None, description="Filter by status"),
     project_type: Optional[str] = Query(None, description="Filter by project type"),
     search: Optional[str] = Query(None, description="Search in name and description"),
-    project_service: ProjectService = Depends(get_project_service)
+    project_service: ProjectService = Depends(get_project_service),
+    user_id: Optional[str] = Depends(get_current_user_id)
 ):
     """Get paginated projects with optional filtering."""
     try:
@@ -267,7 +271,7 @@ async def get_projects(
                 search=search
             )
         
-        return project_service.get_projects_paginated(pagination, filters)
+        return project_service.get_projects_paginated(pagination, filters, user_id=user_id)
     except Exception as e:
         logger.exception("获取项目列表失败")
         raise HTTPException(status_code=500, detail="获取项目列表失败，请稍后重试")
@@ -278,11 +282,12 @@ async def get_project(
     project_id: str,
     include_clips: bool = Query(False, description="是否包含切片数据"),
     include_collections: bool = Query(False, description="是否包含合集数据"),
-    project_service: ProjectService = Depends(get_project_service)
+    project_service: ProjectService = Depends(get_project_service),
+    user_id: Optional[str] = Depends(get_current_user_id)
 ):
     """Get a project by ID."""
     try:
-        project = project_service.get_project_with_stats(project_id)
+        project = project_service.get_project_with_stats(project_id, user_id=user_id)
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
         
@@ -330,10 +335,15 @@ async def get_project(
 async def update_project(
     project_id: str,
     project_data: ProjectUpdate,
-    project_service: ProjectService = Depends(get_project_service)
+    project_service: ProjectService = Depends(get_project_service),
+    user_id: Optional[str] = Depends(get_current_user_id)
 ):
     """Update a project."""
     try:
+        # 归属校验：防止改他人项目
+        if not project_service.get_owned(project_id, user_id):
+            raise HTTPException(status_code=404, detail="Project not found")
+
         project = project_service.update_project(project_id, project_data)
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
@@ -365,11 +375,12 @@ async def update_project(
 @router.delete("/{project_id}")
 async def delete_project(
     project_id: str,
-    project_service: ProjectService = Depends(get_project_service)
+    project_service: ProjectService = Depends(get_project_service),
+    user_id: Optional[str] = Depends(get_current_user_id)
 ):
     """Delete a project and all its related files."""
     try:
-        success = project_service.delete_project_with_files(project_id)
+        success = project_service.delete_project_with_files(project_id, user_id=user_id)
         if not success:
             raise HTTPException(status_code=404, detail="Project not found")
         return {"message": "Project and all related files deleted successfully"}
@@ -437,15 +448,16 @@ async def start_processing(
     project_id: str,
     project_service: ProjectService = Depends(get_project_service),
     processing_service: ProcessingService = Depends(get_processing_service),
-    websocket_service: WebSocketNotificationService = Depends(get_websocket_service)
+    websocket_service: WebSocketNotificationService = Depends(get_websocket_service),
+    user_id: Optional[str] = Depends(get_current_user_id)
 ):
     """Start processing a project using Celery task queue."""
     try:
-        # 获取项目信息
-        project = project_service.get(project_id)
+        # 获取项目信息（按用户归属校验）
+        project = project_service.get_owned(project_id, user_id)
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
-        
+
         # 检查项目状态
         if project.status.value not in ["pending", "failed"]:
             raise HTTPException(status_code=400, detail="Project is not in pending or failed status")
@@ -534,15 +546,16 @@ async def retry_processing(
     project_id: str,
     project_service: ProjectService = Depends(get_project_service),
     processing_service: ProcessingService = Depends(get_processing_service),
-    websocket_service: WebSocketNotificationService = Depends(get_websocket_service)
+    websocket_service: WebSocketNotificationService = Depends(get_websocket_service),
+    user_id: Optional[str] = Depends(get_current_user_id)
 ):
     """Retry processing a project from the beginning."""
     try:
-        # 获取项目信息
-        project = project_service.get(project_id)
+        # 获取项目信息（按用户归属校验）
+        project = project_service.get_owned(project_id, user_id)
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
-        
+
         # 检查项目状态 - 允许失败、完成、处理中和等待中状态重试
         if project.status.value not in ["failed", "completed", "processing", "pending"]:
             raise HTTPException(status_code=400, detail="Project is not in failed, completed, processing, or pending status")
@@ -625,12 +638,13 @@ async def resume_processing(
     project_id: str,
     start_step: str = Form(..., description="Step to resume from (step1_outline, step2_timeline, etc.)"),
     project_service: ProjectService = Depends(get_project_service),
-    processing_service: ProcessingService = Depends(get_processing_service)
+    processing_service: ProcessingService = Depends(get_processing_service),
+    user_id: Optional[str] = Depends(get_current_user_id)
 ):
     """Resume processing from a specific step."""
     try:
-        # 获取项目信息
-        project = project_service.get(project_id)
+        # 获取项目信息（按用户归属校验）
+        project = project_service.get_owned(project_id, user_id)
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
         
@@ -667,15 +681,16 @@ async def resume_processing(
 async def get_processing_status(
     project_id: str,
     project_service: ProjectService = Depends(get_project_service),
-    processing_service: ProcessingService = Depends(get_processing_service)
+    processing_service: ProcessingService = Depends(get_processing_service),
+    user_id: Optional[str] = Depends(get_current_user_id)
 ):
     """Get processing status of a project."""
     try:
-        # 获取项目信息
-        project = project_service.get(project_id)
+        # 获取项目信息（按用户归属校验）
+        project = project_service.get_owned(project_id, user_id)
         if not project:
             raise HTTPException(status_code=404, detail="Project not found")
-        
+
         # 获取最新的任务
         tasks = project.tasks if hasattr(project, 'tasks') else []
         latest_task = None

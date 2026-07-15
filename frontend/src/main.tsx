@@ -12,6 +12,7 @@ import utc from 'dayjs/plugin/utc'
 import App from './App.tsx'
 import ErrorBoundary from './components/ErrorBoundary'
 import { ThemeProvider, useTheme } from './context/ThemeContext'
+import { AuthProvider } from './context/AuthContext'
 import { initAnalytics } from './analytics/posthog'
 import { trackLaunch } from './analytics/lifecycle'
 import './index.css'
@@ -69,9 +70,11 @@ function ThemedApp() {
     }}
     >
     <React.StrictMode>
-      <HashRouter>
-        <Root />
-      </HashRouter>
+      <AuthProvider>
+        <HashRouter>
+          <Root />
+        </HashRouter>
+      </AuthProvider>
     </React.StrictMode>
     </ConfigProvider>
   )
