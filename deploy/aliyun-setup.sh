@@ -48,20 +48,48 @@ else
   grep -q 'vm.swappiness' /etc/sysctl.conf || echo 'vm.swappiness=10' >> /etc/sysctl.conf
 fi
 
-# ---------- 2. 装 Docker ----------
+# ---------- 2. 装 Docker（兼容 Ubuntu/Debian 与 Alibaba Cloud Linux/CentOS）----------
 if command -v docker >/dev/null 2>&1; then
   log "Docker 已安装：$(docker --version)"
 else
-  log "安装 Docker（官方脚本，海外直连快）"
-  curl -fsSL https://get.docker.com | bash
+  log "安装 Docker"
+  if command -v dnf >/dev/null 2>&1 || command -v yum >/dev/null 2>&1; then
+    # Alibaba Cloud Linux / CentOS / RHEL 系：用 dnf/yum + 阿里云 docker-ce 源
+    PKG="$(command -v dnf || command -v yum)"
+    log "检测到 RHEL 系（Alibaba Cloud Linux/CentOS），用 $PKG 安装"
+    $PKG install -y dnf-plugins-core yum-utils 2>/dev/null || true
+    # 阿里云 docker-ce 源对 Alibaba Cloud Linux 兼容最好（用 centos 8 源）
+    $PKG config-manager --add-repo https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo 2>/dev/null \
+      || yum-config-manager --add-repo https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
+    # Alibaba Cloud Linux 3 的 releasever 需指向 centos 8，避免找不到包
+    sed -i 's|$releasever|8|g' /etc/yum.repos.d/docker-ce.repo 2>/dev/null || true
+    $PKG install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin \
+      || $PKG install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin --nobest
+  else
+    # Ubuntu/Debian 系：官方脚本
+    log "检测到 Debian 系，用官方脚本安装"
+    curl -fsSL https://get.docker.com | bash
+  fi
   systemctl enable --now docker
 fi
 
+# 校验 docker compose 子命令可用（老版本可能只有 docker-compose）
+COMPOSE="docker compose"
+if ! docker compose version >/dev/null 2>&1; then
+  if command -v docker-compose >/dev/null 2>&1; then
+    COMPOSE="docker-compose"
+  else
+    warn "docker compose 插件缺失，尝试安装"
+    (command -v dnf >/dev/null 2>&1 && dnf install -y docker-compose-plugin) || true
+  fi
+fi
+log "使用 compose 命令：$COMPOSE"
+
 # ---------- 3. 构建并启动 ----------
 log "构建镜像并启动（首次较久：装 Remotion + 下 Chromium）"
-docker compose up -d --build
+$COMPOSE up -d --build
 
-log "完成。查看状态： docker compose ps"
-log "查看后端日志： docker compose logs -f backend"
+log "完成。查看状态： $COMPOSE ps"
+log "查看后端日志： $COMPOSE logs -f backend"
 PUBLIC_IP="$(curl -s -m 3 http://100.100.100.200/latest/meta-data/eipv4 2>/dev/null || curl -s -m 3 ifconfig.me 2>/dev/null || echo '<服务器公网IP>')"
 log "浏览器访问： http://${PUBLIC_IP}/    （需先在阿里云安全组放行 80 端口！）"
