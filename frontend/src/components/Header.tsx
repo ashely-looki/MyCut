@@ -1,7 +1,7 @@
 import React from 'react'
 import { Layout, Button, Dropdown, message } from 'antd'
 import type { MenuProps } from 'antd'
-import { SettingOutlined, ArrowLeftOutlined, BulbOutlined, MoonOutlined, FileTextOutlined, UserOutlined, LogoutOutlined, CrownOutlined } from '@ant-design/icons'
+import { SettingOutlined, ArrowLeftOutlined, BulbOutlined, MoonOutlined, FileTextOutlined, UserOutlined, LogoutOutlined, CrownOutlined, DashboardOutlined } from '@ant-design/icons'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useTheme } from '../context/ThemeContext'
 import { useAuth } from '../context/AuthContext'
@@ -14,7 +14,7 @@ const Header: React.FC = () => {
   const location = useLocation()
   const isHomePage = location.pathname === '/'
   const { theme, toggleTheme } = useTheme()
-  const { authEnabled, user, signOut } = useAuth()
+  const { authEnabled, user, isAdmin, signOut } = useAuth()
 
   const handleLogout = async () => {
     try {
@@ -119,6 +119,22 @@ const Header: React.FC = () => {
         >
           会员
         </Button>
+        {isAdmin && (
+          <Button
+            type="text"
+            className="glass-btn"
+            icon={<DashboardOutlined />}
+            onClick={() => navigate('/admin')}
+            style={{
+              color: location.pathname === '/admin' ? 'var(--ac-accent)' : 'var(--ac-sub)',
+              borderRadius: '999px',
+              height: '36px',
+              padding: '0 16px',
+            }}
+          >
+            后台
+          </Button>
+        )}
         <Button
           type="text"
           className="glass-btn"

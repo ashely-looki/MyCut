@@ -1,234 +1,22 @@
 import React, { useState, useEffect } from 'react'
-import { Layout, Card, Form, Input, Button, Typography, Space, Alert, Divider, Row, Col, Tabs, message, Select, Tag, Switch } from 'antd'
-import { KeyOutlined, SaveOutlined, ApiOutlined, SettingOutlined, InfoCircleOutlined, RobotOutlined, SoundOutlined, PoweroffOutlined } from '@ant-design/icons'
-import { settingsApi } from '../services/api'
-import SpeechRecognitionConfig from '../components/SpeechRecognitionConfig'
+import { Layout, Card, Typography, Alert, Row, Col, message, Switch } from 'antd'
+import { SettingOutlined, PoweroffOutlined } from '@ant-design/icons'
 import { isDesktopMode } from '../utils/desktopMode'
-import { trackApiKeyConfigured } from '../analytics/events'
 import { isAnalyticsEnabled, setAnalyticsEnabled } from '../analytics/posthog'
 import './SettingsPage.css'
 
 const { Content } = Layout
 const { Title, Text, Paragraph } = Typography
-const { TabPane } = Tabs
 
+/**
+ * 系统设置（普通用户）
+ *
+ * 只保留「应用设置」——开机自启、隐私/匿名统计开关这类每个用户自己可控的项。
+ * AI 模型配置、语音转写配置是全局共享的（DeepSeek Key 等），已移到管理者后台 /admin，
+ * 只有管理员能改，见 components/AiModelConfig 与 AdminPage。
+ */
 const SettingsPage: React.FC = () => {
-  const [form] = Form.useForm()
-  const [loading, setLoading] = useState(false)
-  const [currentProvider, setCurrentProvider] = useState<any>({})
-  const [selectedProvider, setSelectedProvider] = useState('deepseek')
   const [analyticsOn, setAnalyticsOn] = useState(isAnalyticsEnabled())
-
-  // 提供商配置 —— 本项目只用 DeepSeek
-  const providerConfig = {
-    deepseek: {
-      name: 'DeepSeek',
-      icon: <RobotOutlined />,
-      color: '#4d6bfe',
-      description: 'DeepSeek 大模型服务（OpenAI 兼容）',
-      apiKeyField: 'deepseek_api_key',
-      placeholder: '请输入 DeepSeek API 密钥'
-    }
-  }
-
-  // 加载数据
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  const loadData = async () => {
-    try {
-      // 检查是否在Desktop模式下运行
-      const isDesktop = await isDesktopMode()
-      
-      if (isDesktop) {
-        // Desktop模式：调用完整的API
-        const [settings, models, provider] = await Promise.allSettled([
-          settingsApi.getSettings(),
-          settingsApi.getAvailableModels(),
-          settingsApi.getCurrentProvider()
-        ])
-        
-        // 检查是否有失败的请求
-        const failedRequests = [settings, models, provider].filter(result => result.status === 'rejected')
-        if (failedRequests.length > 0) {
-          console.warn('部分API请求失败:', failedRequests.map(r => (r as PromiseRejectedResult).reason))
-        }
-        
-        // 处理设置数据
-        const settingsData = settings.status === 'fulfilled' ? settings.value : {}
-        
-        // 处理模型数据
-        const modelsData = models.status === 'fulfilled' ? models.value.models : {}
-        
-        // 处理提供商数据（本项目只用 DeepSeek）
-        const providerData = provider.status === 'fulfilled'
-          ? provider.value
-          : { available: false, provider: 'deepseek', display_name: 'DeepSeek', model: 'deepseek-chat' }
-        const providerName = providerData.provider || 'deepseek'
-        setCurrentProvider(providerData)
-
-        // 将嵌套的settings结构转换为扁平结构
-        const flatSettings = {
-          llm_provider: providerName, // 使用实际的提供商
-          deepseek_api_key: settingsData.api?.api_keys?.deepseek || '',
-          model_name: settingsData.api?.api_model || 'deepseek-chat',
-          chunk_size: settingsData.processing?.processing_chunk_size || 5000,
-          min_score_threshold: settingsData.processing?.processing_min_score || 0.7,
-          max_clips_per_collection: settingsData.processing?.processing_max_clips || 5
-        }
-        
-        setSelectedProvider(providerName)
-        
-        // 设置表单初始值
-        form.setFieldsValue(flatSettings)
-        console.log('Desktop模式 - 设置表单值:', flatSettings)
-        console.log('可用模型:', modelsData)
-        console.log('当前提供商:', providerData)
-      } else {
-        // Web模式：使用默认配置，不调用Desktop API
-        console.log('Web模式 - 使用默认配置')
-        
-        const flatSettings = {
-          llm_provider: 'deepseek',
-          deepseek_api_key: '',
-          model_name: 'deepseek-chat',
-          chunk_size: 5000,
-          min_score_threshold: 0.7,
-          max_clips_per_collection: 5
-        }
-
-        setSelectedProvider('deepseek')
-        form.setFieldsValue(flatSettings)
-
-        // 设置默认模型数据
-        setCurrentProvider({
-          available: false,
-          provider: 'deepseek',
-          display_name: 'DeepSeek',
-          model: 'deepseek-chat'
-        })
-      }
-    } catch (error) {
-      console.error('加载数据失败:', error)
-    }
-  }
-
-  // 保存配置
-  const handleSave = async (values: any) => {
-    try {
-      setLoading(true)
-      
-      // 检查是否在Desktop模式下运行
-      const isDesktop = await isDesktopMode()
-      
-      if (!isDesktop) {
-        // Web模式：只显示提示，不实际保存
-        message.info('Web模式下配置无法保存，请在桌面应用中使用完整功能')
-        setLoading(false)
-        return
-      }
-      
-      // 先获取现有配置，避免清空已有的API key
-      let existingSettings = null
-      try {
-        existingSettings = await settingsApi.getSettings()
-      } catch (error) {
-        console.warn('获取现有配置失败，将使用默认配置:', error)
-      }
-      
-      // 获取现有的API keys，只更新有值的字段
-      const existingApiKeys = existingSettings?.api?.api_keys || {}
-      
-      // 转换扁平数据为后端期望的嵌套结构
-      const backendSettings = {
-        basic: {
-          app_name: "AutoClip Desktop",
-          app_version: "1.0.0",
-          debug_mode: false,
-          auto_start: true
-        },
-        service: {
-          host: "127.0.0.1",
-          port: 8000,
-          max_memory_usage: 2048
-        },
-        api: {
-          provider: values.llm_provider || "deepseek",
-          api_keys: {
-            // 只更新有值的API key，保持现有的值
-            deepseek: values.deepseek_api_key || existingApiKeys.deepseek || ""
-          },
-          api_model: values.model_name || "deepseek-chat",
-          api_max_tokens: 4096,
-          api_timeout: 30
-        },
-        processing: {
-          processing_chunk_size: values.chunk_size || 5000,
-          processing_min_score: values.min_score_threshold || 0.7,
-          processing_max_clips: values.max_clips_per_collection || 5,
-          processing_max_retries: 3
-        },
-        logs: {
-          log_level: "INFO",
-          log_retention_days: 7
-        },
-        paths: {
-          data_directory: "/Users/zhoukk/Library/Application Support/AutoClip",
-          cache_directory: "/Users/zhoukk/Library/Application Support/AutoClip/cache",
-          temp_directory: "/Users/zhoukk/Library/Application Support/AutoClip/temp"
-        }
-      }
-      
-      await settingsApi.updateSettings(backendSettings)
-      message.success('配置保存成功！')
-
-      // 埋点：记录配置了哪个 provider 的 key（不传 key 明文）
-      const apiKeyField = providerConfig[selectedProvider as keyof typeof providerConfig]?.apiKeyField
-      if (apiKeyField) {
-        trackApiKeyConfigured({
-          provider: selectedProvider,
-          hasKey: !!values[apiKeyField],
-        })
-      }
-
-      await loadData() // 重新加载数据
-    } catch (error: any) {
-      message.error('保存失败: ' + (error.message || '未知错误'))
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // 测试API密钥
-  const handleTestApiKey = async () => {
-    const apiKey = form.getFieldValue(providerConfig[selectedProvider as keyof typeof providerConfig].apiKeyField)
-    
-    if (!apiKey || apiKey.trim() === '') {
-      message.error('请先输入API密钥')
-      return
-    }
-
-    try {
-      setLoading(true)
-      const result = await settingsApi.testApiKey(selectedProvider, apiKey)
-      if (result.success) {
-        message.success('API密钥测试成功！')
-      } else {
-        message.error('API密钥测试失败: ' + (result.error || '未知错误'))
-      }
-    } catch (error: any) {
-      message.error('测试失败: ' + (error.message || '未知错误'))
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // 提供商切换
-  const handleProviderChange = (provider: string) => {
-    setSelectedProvider(provider)
-    form.setFieldsValue({ llm_provider: provider })
-  }
 
   return (
     <Content className="settings-page">
@@ -236,300 +24,44 @@ const SettingsPage: React.FC = () => {
         <Title level={2} className="settings-title">
           <SettingOutlined /> 系统设置
         </Title>
-        
-        <Tabs defaultActiveKey="api" className="settings-tabs">
-          <TabPane tab="AI 模型配置" key="api">
-            <Card title="AI 模型配置" className="settings-card">
-              <Alert
-                message="使用 DeepSeek 模型"
-                description="本项目使用 DeepSeek 大模型（OpenAI 兼容），在下方填入 DeepSeek API Key 并选择模型即可。"
-                type="info"
-                showIcon
-                className="settings-alert"
-              />
-              
-              <Form
-                form={form}
-                layout="vertical"
-                className="settings-form"
-                onFinish={handleSave}
-                initialValues={{
-                  llm_provider: 'deepseek',
-                  model_name: 'deepseek-chat',
-                  chunk_size: 5000,
-                  min_score_threshold: 0.7,
-                  max_clips_per_collection: 5
-                }}
-              >
-                {/* 当前提供商状态 */}
-                {currentProvider.available && (
-                  <Alert
-                    message={`当前使用: ${currentProvider.display_name} - ${currentProvider.model}`}
-                    type="success"
-                    showIcon
-                    style={{ marginBottom: 24 }}
-                  />
-                )}
 
-                {/* 提供商选择 */}
-                <Form.Item
-                  label="选择AI模型提供商"
-                  name="llm_provider"
-                  className="form-item"
-                  rules={[{ required: true, message: '请选择AI模型提供商' }]}
-                >
-                  <Select
-                    value={selectedProvider}
-                    onChange={handleProviderChange}
-                    className="settings-input"
-                    placeholder="请选择AI模型提供商"
-                  >
-                    {Object.entries(providerConfig).map(([key, config]) => (
-                      <Select.Option key={key} value={key}>
-                        <Space>
-                          <span style={{ color: config.color }}>{config.icon}</span>
-                          <span>{config.name}</span>
-                          <Tag color={config.color}>{config.description}</Tag>
-                        </Space>
-                      </Select.Option>
-                    ))}
-                  </Select>
-                </Form.Item>
+        <Card title="应用设置" className="settings-card">
+          <Alert
+            message="应用行为配置"
+            description="配置应用的启动行为和系统集成选项。"
+            type="info"
+            showIcon
+            className="settings-alert"
+          />
 
-                {/* 动态API密钥输入 */}
-                <Form.Item
-                  label={`${providerConfig[selectedProvider as keyof typeof providerConfig].name} API Key`}
-                  name={providerConfig[selectedProvider as keyof typeof providerConfig].apiKeyField}
-                  className="form-item"
-                  rules={[
-                    { required: true, message: '请输入API密钥' },
-                    { min: 10, message: 'API密钥长度不能少于10位' }
-                  ]}
-                >
-                  <Input.Password
-                    placeholder={providerConfig[selectedProvider as keyof typeof providerConfig].placeholder}
-                    prefix={<KeyOutlined />}
-                    className="settings-input"
-                  />
-                </Form.Item>
+          <AppSettings />
+        </Card>
 
-                {/* 模型选择 - 改进版本 */}
-                <Form.Item
-                  label="选择模型"
-                  name="model_name"
-                  className="form-item"
-                  rules={[{ required: true, message: '请输入或选择模型名称' }]}
-                  extra="支持手动输入模型名称或从常用模型中选择"
-                >
-                  <Select
-                    className="settings-input"
-                    placeholder="请选择或输入模型名称"
-                    showSearch
-                    allowClear
-                  >
-                    {/* DeepSeek 模型 */}
-                    <Select.OptGroup label="DeepSeek">
-                      <Select.Option value="deepseek-chat">deepseek-chat (DeepSeek V3)</Select.Option>
-                      <Select.Option value="deepseek-reasoner">deepseek-reasoner (DeepSeek R1)</Select.Option>
-                    </Select.OptGroup>
-                  </Select>
-                </Form.Item>
-
-                <Form.Item className="form-item">
-                  <Space>
-                    <Button
-                      type="default"
-                      icon={<ApiOutlined />}
-                      className="test-button"
-                      onClick={handleTestApiKey}
-                      loading={loading}
-                    >
-                      测试连接
-                    </Button>
-                  </Space>
-                </Form.Item>
-
-                <Divider className="settings-divider" />
-
-                <Title level={4} className="section-title">模型配置</Title>
-                
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item
-                      label="文本分块大小"
-                      name="chunk_size"
-                      className="form-item"
-                    >
-                      <Input 
-                        type="number" 
-                        placeholder="5000" 
-                        addonAfter="字符" 
-                        className="settings-input"
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Row gutter={16}>
-                  <Col span={12}>
-                    <Form.Item
-                      label="最低评分阈值"
-                      name="min_score_threshold"
-                      className="form-item"
-                    >
-                      <Input 
-                        type="number" 
-                        step="0.1" 
-                        min="0" 
-                        max="1" 
-                        placeholder="0.7" 
-                        className="settings-input"
-                      />
-                    </Form.Item>
-                  </Col>
-                  <Col span={12}>
-                    <Form.Item
-                      label="每个合集最大切片数"
-                      name="max_clips_per_collection"
-                      className="form-item"
-                    >
-                      <Input 
-                        type="number" 
-                        placeholder="5" 
-                        addonAfter="个" 
-                        className="settings-input"
-                      />
-                    </Form.Item>
-                  </Col>
-                </Row>
-
-                <Form.Item className="form-item">
-                  <Button
-                    type="primary"
-                    htmlType="submit"
-                    icon={<SaveOutlined />}
-                    size="large"
-                    className="save-button"
-                    loading={loading}
-                  >
-                    保存配置
-                  </Button>
-                </Form.Item>
-              </Form>
-            </Card>
-
-            <Card title="使用说明" className="settings-card">
-              <Space direction="vertical" size="large" className="instructions-space">
-                <div className="instruction-item">
-                  <Title level={5} className="instruction-title">
-                    <InfoCircleOutlined /> 1. 配置 DeepSeek
-                  </Title>
-                  <Paragraph className="instruction-text">
-                    本项目使用 <Text strong>DeepSeek</Text> 大模型：
-                    <br />• 访问 platform.deepseek.com 创建并获取 API 密钥
-                    <br />• 模型可选 <Text strong>deepseek-chat</Text>（V3，通用）或 <Text strong>deepseek-reasoner</Text>（R1，推理）
-                  </Paragraph>
-                </div>
-                
-                <div className="instruction-item">
-                  <Title level={5} className="instruction-title">
-                    <InfoCircleOutlined /> 2. 配置参数说明
-                  </Title>
-                  <Paragraph className="instruction-text">
-                    • <Text strong>文本分块大小</Text>：影响处理速度和精度，建议5000字符<br />
-                    • <Text strong>评分阈值</Text>：只有高于此分数的片段才会被保留<br />
-                    • <Text strong>合集切片数</Text>：控制每个主题合集包含的片段数量
-                  </Paragraph>
-                </div>
-                
-                <div className="instruction-item">
-                  <Title level={5} className="instruction-title">
-                    <InfoCircleOutlined /> 3. 测试连接
-                  </Title>
-                  <Paragraph className="instruction-text">
-                    保存前建议先测试API密钥是否有效，确保服务正常运行
-                  </Paragraph>
-                </div>
-              </Space>
-            </Card>
-          </TabPane>
-
-          <TabPane 
-            tab={
-              <span>
-                <SoundOutlined />
-                语音转写配置
-              </span>
-            } 
-            key="speech"
-          >
-            <Card title="语音转写配置" className="settings-card">
-              <Alert
-                message="语音识别服务配置"
-                description="配置语音转写服务，用于视频字幕生成和语音识别。支持本地Whisper模型和多种云服务API。"
-                type="info"
-                showIcon
-                className="settings-alert"
-              />
-              
-              <SpeechRecognitionConfig
-                onConfigChange={(config) => {
-                  console.log('语音配置已更新:', config)
-                  // 移除重复的成功提示，SpeechRecognitionConfig内部已经处理
-                }}
-              />
-            </Card>
-          </TabPane>
-
-          <TabPane 
-            tab={
-              <span>
-                <SettingOutlined />
-                应用设置
-              </span>
-            } 
-            key="app"
-          >
-            <Card title="应用设置" className="settings-card">
-              <Alert
-                message="应用行为配置"
-                description="配置应用的启动行为和系统集成选项。"
-                type="info"
-                showIcon
-                className="settings-alert"
-              />
-              
-              <AppSettings />
-            </Card>
-
-            <Card title="隐私与数据" className="settings-card" style={{ marginTop: 16 }}>
-              <Alert
-                message="使用数据统计"
-                description="为了改进产品，我们会采集匿名的使用数据（如功能使用、出片成功/失败等），不包含你的视频内容、字幕文本或 API 密钥。你可以随时关闭。"
-                type="info"
-                showIcon
-                className="settings-alert"
-              />
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
-                <div>
-                  <Text strong>允许匿名使用统计</Text>
-                  <Paragraph type="secondary" style={{ margin: '4px 0 0' }}>
-                    关闭后将不再上报任何使用数据。
-                  </Paragraph>
-                </div>
-                <Switch
-                  checked={analyticsOn}
-                  onChange={(checked) => {
-                    setAnalyticsEnabled(checked)
-                    setAnalyticsOn(checked)
-                    message.success(checked ? '已开启匿名使用统计' : '已关闭匿名使用统计')
-                  }}
-                />
-              </div>
-            </Card>
-          </TabPane>
-
-        </Tabs>
+        <Card title="隐私与数据" className="settings-card" style={{ marginTop: 16 }}>
+          <Alert
+            message="使用数据统计"
+            description="为了改进产品，我们会采集匿名的使用数据（如功能使用、出片成功/失败等），不包含你的视频内容、字幕文本或 API 密钥。你可以随时关闭。"
+            type="info"
+            showIcon
+            className="settings-alert"
+          />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
+            <div>
+              <Text strong>允许匿名使用统计</Text>
+              <Paragraph type="secondary" style={{ margin: '4px 0 0' }}>
+                关闭后将不再上报任何使用数据。
+              </Paragraph>
+            </div>
+            <Switch
+              checked={analyticsOn}
+              onChange={(checked) => {
+                setAnalyticsEnabled(checked)
+                setAnalyticsOn(checked)
+                message.success(checked ? '已开启匿名使用统计' : '已关闭匿名使用统计')
+              }}
+            />
+          </div>
+        </Card>
       </div>
     </Content>
   )

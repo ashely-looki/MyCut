@@ -9,6 +9,7 @@ import ScriptEditorPage from './pages/ScriptEditorPage'
 import ScriptLibraryPage from './pages/ScriptLibraryPage'
 import LoginPage from './pages/LoginPage'
 import MembershipPage from './pages/MembershipPage'
+import AdminPage from './pages/AdminPage'
 import Header from './components/Header'
 import { trackPageview } from './analytics/posthog'
 import { useAuth } from './context/AuthContext'
@@ -62,6 +63,8 @@ function App() {
           <Route path="/script" element={<ScriptEditorPage />} />
           <Route path="/project/:id" element={<ProjectDetailPage />} />
           <Route path="/membership" element={<MembershipPage />} />
+          {/* 管理者后台：入口按 isAdmin 显示，页面内也会二次拦截非管理员 */}
+          <Route path="/admin" element={<AdminPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </Content>

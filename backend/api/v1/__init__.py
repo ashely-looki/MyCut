@@ -29,6 +29,7 @@ from .hotspots import router as hotspots_router
 from .scripts import router as scripts_router
 from .compose import router as compose_router
 from .pay import router as pay_router
+from .admin import router as admin_router
 # B站上传/投稿/队列/账号相关路由已移除（不在本项目范围内）
 
 # 注册所有路由
@@ -52,5 +53,6 @@ api_router.include_router(hotspots_router, prefix="/hotspots", tags=["hotspots"]
 api_router.include_router(scripts_router, prefix="/scripts", tags=["scripts"])
 api_router.include_router(compose_router, prefix="/compose", tags=["compose"])
 api_router.include_router(pay_router, prefix="/pay", tags=["pay"])
+api_router.include_router(admin_router, prefix="/admin", tags=["admin"])
 
 __all__ = ["api_router"]

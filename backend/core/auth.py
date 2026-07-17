@@ -26,7 +26,7 @@ from jwt import PyJWKClient
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
-from .config import get_supabase_config
+from .config import get_supabase_config, get_admin_emails
 
 logger = logging.getLogger(__name__)
 
@@ -166,3 +166,61 @@ def require_user_id(
 
 # 未开启认证时使用的占位用户 id（保证 user_id 列非空、且可跨会话稳定）
 LOCAL_USER_ID = "local-single-user"
+
+
+def _extract_email(payload: dict) -> Optional[str]:
+    """从 Supabase JWT 里取邮箱。顶层有 email；也兜底看 user_metadata。"""
+    email = payload.get("email")
+    if not email:
+        meta = payload.get("user_metadata") or {}
+        email = meta.get("email")
+    return email.strip().lower() if isinstance(email, str) else None
+
+
+class AdminUser:
+    """通过管理员校验的用户身份（user_id + email）。"""
+
+    def __init__(self, user_id: str, email: str):
+        self.user_id = user_id
+        self.email = email
+
+
+def require_admin(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(_bearer),
+) -> AdminUser:
+    """
+    管理者后台的鉴权依赖：必须带合法 token，且 token 里的 email 命中 ADMIN_EMAILS 白名单。
+
+    - 白名单为空 → 一律 403（没有配置管理员时，后台接口默认全关，最安全）。
+    - 未带 token / token 非法 → 401。
+    - 已登录但邮箱不在白名单 → 403。
+
+    注意：这里独立于 AUTH_ENABLED。哪怕面向用户的登录门没开，只要配了
+    SUPABASE_URL / SUPABASE_JWT_SECRET 能验签 token，管理员就能凭合法 token 进后台。
+    """
+    admins = get_admin_emails()
+    if not admins:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="后台未开放")
+
+    if not credentials or not credentials.credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="需要登录",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    payload = _decode_supabase_jwt(credentials.credentials)
+    user_id = payload.get("sub")
+    email = _extract_email(payload)
+    if not user_id or not email:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="登录凭证缺少用户信息")
+    if email not in admins:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="没有后台权限")
+    return AdminUser(user_id=user_id, email=email)
+
+
+def is_admin_email(email: Optional[str]) -> bool:
+    """判断某邮箱是否是管理员（供只读判断用，不做鉴权）。"""
+    if not isinstance(email, str):
+        return False
+    return email.strip().lower() in get_admin_emails()

@@ -49,6 +49,12 @@ services:
       - backend
     ports:
       - "80:80"
+      # HTTPS：证书由宿主机 certbot(Let's Encrypt)签发，见下方 letsencrypt 只读挂载。
+      - "443:443"
+    volumes:
+      # 把宿主机的 Let's Encrypt 证书目录只读挂进容器，供 nginx 读取 fullchain/privkey。
+      # 证书路径 /etc/letsencrypt/live/<域名>/，与 deploy/nginx.conf 里的 ssl_certificate 对应。
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     restart: unless-stopped
 
 volumes:

@@ -713,4 +713,76 @@ export const payApi = {
   getMembership: (): Promise<Membership> => api.get('/pay/membership'),
 }
 
+// ---- 管理者后台 ----
+export interface AdminOverview {
+  total_users: number
+  total_members: number
+  new_users_today: number
+  total_projects: number
+  processing_projects: number
+  failed_projects: number
+  total_orders: number
+  paid_orders: number
+  total_revenue: string
+  revenue_today: string
+}
+
+export interface AdminUserItem {
+  user_id: string
+  is_member: boolean
+  membership_expires_at: string | null
+  project_count: number
+  paid_order_count: number
+  total_paid: string
+  first_seen_at: string | null
+}
+
+export interface AdminOrderItem {
+  out_trade_no: string
+  user_id: string
+  subject: string
+  amount: string
+  status: 'pending' | 'paid' | 'closed' | 'failed'
+  membership_months: string
+  alipay_trade_no: string | null
+  created_at: string | null
+  paid_at: string | null
+}
+
+export interface AdminListResponse<T> {
+  items: T[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export interface AdminUsersQuery {
+  page?: number
+  page_size?: number
+  only_members?: boolean
+  q?: string
+}
+
+export interface AdminOrdersQuery {
+  page?: number
+  page_size?: number
+  status?: string
+  user_id?: string
+}
+
+export const adminApi = {
+  // 当前登录者是不是管理员（不鉴权、不抛错，用来决定后台入口是否显示）
+  whoami: (): Promise<{ is_admin: boolean; email: string | null }> =>
+    api.get('/admin/whoami'),
+  getOverview: (): Promise<AdminOverview> => api.get('/admin/overview'),
+  listUsers: (params: AdminUsersQuery = {}): Promise<AdminListResponse<AdminUserItem>> =>
+    api.get('/admin/users', { params }),
+  listOrders: (params: AdminOrdersQuery = {}): Promise<AdminListResponse<AdminOrderItem>> =>
+    api.get('/admin/orders', { params }),
+  // 手动给某用户开通/延长会员（不走支付）
+  grantMembership: (userId: string, months: number, note?: string): Promise<{
+    user_id: string; is_member: boolean; expires_at: string | null
+  }> => api.post('/admin/memberships/grant', { user_id: userId, months, note }),
+}
+
 export default api

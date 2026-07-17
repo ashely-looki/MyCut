@@ -15,6 +15,7 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import type { Session, User } from '@supabase/supabase-js'
 import { supabase, authEnabled } from '../lib/supabase'
 import { setAuthToken } from './authTokenStore'
+import { adminApi } from '../services/api'
 
 interface AuthContextValue {
   /** 是否启用了登录（Supabase 已配置）。false 时应用不挡登录门。 */
@@ -23,6 +24,8 @@ interface AuthContextValue {
   loading: boolean
   user: User | null
   session: Session | null
+  /** 当前登录者是否是管理员（后端 ADMIN_EMAILS 白名单判定）。决定 /admin 入口是否显示。 */
+  isAdmin: boolean
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string) => Promise<{ needsEmailConfirm: boolean }>
   signOut: () => Promise<void>
@@ -34,6 +37,7 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   const [session, setSession] = useState<Session | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState<boolean>(authEnabled)
+  const [isAdmin, setIsAdmin] = useState<boolean>(false)
 
   useEffect(() => {
     if (!authEnabled || !supabase) {
@@ -59,6 +63,32 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
     return () => sub.subscription.unsubscribe()
   }, [])
 
+  // 判定当前登录者是否管理员：token 变化后问一次后端（whoami 不鉴权、不抛错）。
+  // 未配置登录（authEnabled=false）时不查，直接非管理员——本地单人模式没有后台入口。
+  useEffect(() => {
+    if (!authEnabled) {
+      setIsAdmin(false)
+      return
+    }
+    const token = session?.access_token
+    if (!token) {
+      setIsAdmin(false)
+      return
+    }
+    let cancelled = false
+    adminApi
+      .whoami()
+      .then((res) => {
+        if (!cancelled) setIsAdmin(!!res.is_admin)
+      })
+      .catch(() => {
+        if (!cancelled) setIsAdmin(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [session?.access_token])
+
   const signIn = async (email: string, password: string) => {
     if (!supabase) throw new Error('未配置登录服务')
     const { error } = await supabase.auth.signInWithPassword({ email, password })
@@ -82,8 +112,8 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
   }
 
   const value = useMemo<AuthContextValue>(
-    () => ({ authEnabled, loading, user, session, signIn, signUp, signOut }),
-    [loading, user, session],
+    () => ({ authEnabled, loading, user, session, isAdmin, signIn, signUp, signOut }),
+    [loading, user, session, isAdmin],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

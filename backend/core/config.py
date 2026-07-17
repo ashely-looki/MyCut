@@ -74,6 +74,11 @@ class Settings(BaseSettings):
     supabase_url: str = Field(default='', validation_alias=AliasChoices('SUPABASE_URL'))
     supabase_jwt_secret: str = Field(default='', validation_alias=AliasChoices('SUPABASE_JWT_SECRET'))
     auth_enabled: bool = Field(default=False, validation_alias=AliasChoices('AUTH_ENABLED'))
+    # ---- 管理者后台 ----
+    # 逗号分隔的管理员邮箱白名单，例如 "me@x.com,ops@y.com"。登录 JWT 里的 email
+    # 命中白名单才算管理员，能进 /admin 后台。留空 = 没有管理员（后台接口全拒）。
+    # 复用现有 Supabase 登录，不新增账号体系。
+    admin_emails: str = Field(default='', validation_alias=AliasChoices('ADMIN_EMAILS'))
 
     # ---- 支付宝支付（电脑网站支付 alipay.trade.page.pay）----
     # 沙箱调试：ALIPAY_ENABLED=true 且填了 APPID + 应用私钥 + 支付宝公钥时才启用支付接口。
@@ -150,6 +155,14 @@ def get_supabase_config() -> Dict[str, Any]:
         # - JWT secret（走 HS256，老项目/回退）
         "auth_enabled": settings.auth_enabled and bool(settings.supabase_url or settings.supabase_jwt_secret),
     }
+
+def get_admin_emails() -> list:
+    """解析管理员邮箱白名单（逗号分隔，统一小写去空格）。留空返回 []（无管理员）。"""
+    raw = (settings.admin_emails or '').strip()
+    if not raw:
+        return []
+    return [e.strip().lower() for e in raw.split(',') if e.strip()]
+
 
 def _load_key(inline: str, path: str) -> str:
     """读取 PEM 密钥：优先文件路径，其次内联（内联里 \\n 还原为真换行）。"""
