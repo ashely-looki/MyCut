@@ -41,6 +41,27 @@ def get_websocket_service():
     return WebSocketNotificationService
 
 
+def _resolve_project_video_path(project_id: str, project) -> Optional[Path]:
+    """Resolve the single playable output represented by a project."""
+    from ...core.path_utils import get_project_directory
+
+    project_root = get_project_directory(project_id)
+    output_dir = project_root / "output"
+    candidates = [
+        output_dir / "compose.mp4",
+        output_dir / "final.mp4",
+        output_dir / "result.mp4",
+    ]
+
+    if project.video_path:
+        candidates.append(Path(project.video_path))
+
+    if output_dir.exists():
+        candidates.extend(sorted(output_dir.glob("*.mp4")))
+
+    return next((path for path in candidates if path.is_file()), None)
+
+
 @router.post("/upload", response_model=ProjectResponse)
 async def upload_files(
     video_file: UploadFile = File(...),
@@ -866,6 +887,32 @@ async def generate_project_thumbnail(
         raise HTTPException(status_code=500, detail=f"生成缩略图失败: {str(e)}")
 
 
+@router.get("/{project_id}/video")
+async def preview_project_video(
+    project_id: str,
+    project_service: ProjectService = Depends(get_project_service),
+):
+    """Stream the single completed video represented by a project."""
+    from fastapi.responses import FileResponse
+
+    project = project_service.get(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="项目不存在")
+
+    video_path = _resolve_project_video_path(project_id, project)
+    if not video_path:
+        raise HTTPException(status_code=404, detail="成片文件不存在")
+
+    return FileResponse(
+        path=str(video_path),
+        media_type="video/mp4",
+        headers={
+            "Accept-Ranges": "bytes",
+            "Cache-Control": "private, max-age=3600",
+        },
+    )
+
+
 @router.get("/{project_id}/files/{filename}")
 async def get_project_file(
     project_id: str,
@@ -1240,7 +1287,7 @@ async def download_project_file(
     db: Session = Depends(get_db),
     project_service: ProjectService = Depends(get_project_service)
 ):
-    """下载项目文件（切片或合集）"""
+    """下载项目成片；保留旧参数用于兼容既有调用。"""
     try:
         from fastapi.responses import FileResponse
         from pathlib import Path
@@ -1317,7 +1364,25 @@ async def download_project_file(
             )
         
         else:
-            raise HTTPException(status_code=400, detail="必须指定clip_id或collection_id")
+            file_path = _resolve_project_video_path(project_id, project)
+            if not file_path:
+                raise HTTPException(status_code=404, detail="成片文件不存在")
+
+            from ...utils.video_processor import VideoProcessor
+            safe_name = VideoProcessor.sanitize_filename(project.name or f"project_{project_id}")
+            filename = f"{safe_name}.mp4"
+
+            import urllib.parse
+            encoded_filename = urllib.parse.quote(filename.encode('utf-8'))
+
+            return FileResponse(
+                path=str(file_path),
+                filename=filename,
+                media_type="video/mp4",
+                headers={
+                    "Content-Disposition": f"attachment; filename*=UTF-8''{encoded_filename}"
+                }
+            )
         
     except HTTPException:
         raise

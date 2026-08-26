@@ -6,8 +6,6 @@ import downloadLinear from '@iconify-icons/solar/download-linear'
 import playCircleBold from '@iconify-icons/solar/play-circle-bold'
 import playLinear from '@iconify-icons/solar/play-linear'
 import restartLinear from '@iconify-icons/solar/restart-linear'
-import scissorsLinear from '@iconify-icons/solar/scissors-linear'
-import subtitlesLinear from '@iconify-icons/solar/subtitles-linear'
 import trashBinMinimalisticLinear from '@iconify-icons/solar/trash-bin-minimalistic-linear'
 import trashBinMinimalisticBold from '@iconify-icons/solar/trash-bin-minimalistic-bold'
 import videoFrameLinear from '@iconify-icons/solar/video-frame-linear'
@@ -77,7 +75,9 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
   const [videoThumbnail, setVideoThumbnail] = useState<string | null>(null)
   const [thumbnailLoading, setThumbnailLoading] = useState(false)
   const [isRetrying, setIsRetrying] = useState(false)
-  const thumbnailCacheKey = `thumbnail_${project.id}`
+  const [isDownloadingVideo, setIsDownloadingVideo] = useState(false)
+  const isComposedVideo = Boolean(project.settings?.compose || project.video_path?.includes('/output/compose.mp4'))
+  const thumbnailCacheKey = `thumbnail_v2_${project.id}`
 
   useEffect(() => {
     let cancelled = false
@@ -125,7 +125,10 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
 
               video.onloadedmetadata = () => {
                 window.clearTimeout(timeoutId)
-                video.currentTime = Math.min(5, video.duration / 4)
+                // 自动成片的视频在正文阶段会带字幕渐变蒙版，封面改取干净的片头帧。
+                video.currentTime = isComposedVideo
+                  ? Math.min(0.2, Math.max(video.duration - 0.05, 0))
+                  : Math.min(5, video.duration / 4)
               }
 
               video.onseeked = () => {
@@ -191,7 +194,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
     return () => {
       cancelled = true
     }
-  }, [project.id, project.thumbnail, project.video_path, thumbnailCacheKey])
+  }, [isComposedVideo, project.id, project.thumbnail, project.video_path, thumbnailCacheKey])
 
   const downloadProgress = project.processing_config?.download_progress || 0
   const isDownloading = project.status === 'pending' && downloadProgress > 0 && downloadProgress < 100
@@ -261,8 +264,24 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
     else navigate(`/project/${project.id}`)
   }
 
-  const category = categoryMap[project.video_category || 'default'] || categoryMap.default
+  const handleDownloadVideo = async () => {
+    if (isDownloadingVideo) return
+    setIsDownloadingVideo(true)
+    try {
+      await projectApi.downloadVideo(project.id)
+      toast.success('成片已开始下载')
+    } catch (error) {
+      console.error('下载项目失败:', error)
+      toast.error('下载失败，请稍后重试')
+    } finally {
+      setIsDownloadingVideo(false)
+    }
+  }
+
+  const videoCategory = project.video_category || project.settings?.video_category || project.project_type || 'default'
+  const category = categoryMap[videoCategory] || categoryMap.default
   const canRetry = normalizedStatus === 'failed' || normalizedStatus === 'processing' || normalizedStatus === 'importing'
+  const displayName = project.name.replace(/^成片(?:\s*[：:]\s*)?/, '').trim() || project.name
 
   if (variant === 'compact') {
     const displayThumbnail = videoThumbnail || fallbackThumbnail
@@ -282,7 +301,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
           type="button"
           onClick={handleOpenProject}
           className="relative block h-[204px] w-full overflow-hidden bg-muted text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-          aria-label={`打开项目 ${project.name}`}
+          aria-label={`打开项目 ${displayName}`}
         >
           {displayThumbnail ? (
             <img src={displayThumbnail} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.015]" />
@@ -302,7 +321,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
 
         <div className="p-4">
           <button type="button" onClick={handleOpenProject} className="block w-full text-left outline-none focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-ring">
-            <h3 className="line-clamp-1 text-[19px] font-semibold leading-none text-[#333] dark:text-foreground" title={project.name}>{project.name}</h3>
+            <h3 className="line-clamp-1 text-[19px] font-semibold leading-none text-[#333] dark:text-foreground" title={displayName}>{displayName}</h3>
             <p className="mt-2 text-sm leading-none text-[#333]/72 dark:text-muted-foreground">
               {dayjs(project.created_at).tz('Asia/Shanghai').fromNow()}
             </p>
@@ -322,12 +341,12 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
                     size="icon"
                     onClick={handleOpenProject}
                     className="size-10 rounded-full bg-[#151515] text-white hover:bg-black hover:text-white dark:bg-foreground dark:text-background dark:hover:bg-foreground/90"
-                    aria-label="继续编辑项目"
+                    aria-label="预览成片"
                   >
                     <Icon icon={clapperboardBold} className="size-5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>继续编辑</TooltipContent>
+                <TooltipContent>预览</TooltipContent>
               </Tooltip>
 
               <Tooltip>
@@ -336,7 +355,8 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
                     type="button"
                     variant="ghost"
                     size="icon"
-                    onClick={() => toast.info('下载功能开发中')}
+                    onClick={() => void handleDownloadVideo()}
+                    disabled={isDownloadingVideo}
                     className="size-10 rounded-full bg-[#151515] text-white hover:bg-black hover:text-white dark:bg-foreground dark:text-background dark:hover:bg-foreground/90"
                     aria-label="下载项目"
                   >
@@ -365,7 +385,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
                 </Tooltip>
                 <AlertDialogContent>
                   <AlertDialogHeader>
-                    <AlertDialogTitle>删除“{project.name}”？</AlertDialogTitle>
+                    <AlertDialogTitle>删除“{displayName}”？</AlertDialogTitle>
                     <AlertDialogDescription>项目及相关处理结果将被永久删除，此操作无法撤销。</AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
@@ -389,7 +409,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
         type="button"
         onClick={handleOpenProject}
         className="relative block aspect-video w-full overflow-hidden bg-muted/70 text-left outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
-        aria-label={`打开项目 ${project.name}`}
+        aria-label={`打开项目 ${displayName}`}
       >
         {videoThumbnail ? (
           <img
@@ -415,9 +435,15 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
           </div>
         )}
 
-        {project.video_category && project.video_category !== 'default' && (
+        {videoCategory !== 'default' && (
           <Badge variant="secondary" className="absolute left-3 top-3 border-0 bg-background/92 font-normal shadow-sm backdrop-blur-sm">
             {category}
+          </Badge>
+        )}
+
+        {normalizedStatus === 'completed' && (
+          <Badge className="absolute right-3 top-3 rounded-full border-0 bg-background/92 px-3 py-1 text-[11px] font-medium text-foreground shadow-sm backdrop-blur-sm hover:bg-background/92">
+            已完成
           </Badge>
         )}
 
@@ -435,39 +461,41 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
             onClick={handleOpenProject}
             className="min-w-0 text-left outline-none focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring"
           >
-            <h3 className="line-clamp-1 text-[15px] font-semibold" title={project.name}>{project.name}</h3>
+            <h3 className="line-clamp-1 text-[15px] font-semibold" title={displayName}>{displayName}</h3>
             <p className="mt-1 text-xs text-muted-foreground">
               {dayjs(project.created_at).tz('Asia/Shanghai').fromNow()}
             </p>
           </button>
         </div>
 
-        <div className="mt-3">
-          <UnifiedStatusBar
-            projectId={project.id}
-            status={normalizedStatus}
-            downloadProgress={progressPercent}
-            onStatusChange={(newStatus) => {
-              console.log(`项目 ${project.id} 状态变化: ${normalizedStatus} -> ${newStatus}`)
-            }}
-            onDownloadProgressUpdate={(progress) => {
-              console.log(`项目 ${project.id} 下载进度更新: ${progress}%`)
-            }}
-          />
-        </div>
-
-        {normalizedStatus === 'completed' && (
-          <div className="mt-3 flex items-center gap-4 border-t border-border/70 pt-3 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1.5"><Icon icon={scissorsLinear} className="size-3.5" />{project.total_clips || 0} 个切片</span>
-            <span className="flex items-center gap-1.5"><Icon icon={subtitlesLinear} className="size-3.5" />{project.total_collections || 0} 个合集</span>
+        {normalizedStatus !== 'completed' && (
+          <div className="mt-3">
+            <UnifiedStatusBar
+              projectId={project.id}
+              status={normalizedStatus}
+              downloadProgress={progressPercent}
+              onStatusChange={(newStatus) => {
+                console.log(`项目 ${project.id} 状态变化: ${normalizedStatus} -> ${newStatus}`)
+              }}
+              onDownloadProgressUpdate={(progress) => {
+                console.log(`项目 ${project.id} 下载进度更新: ${progress}%`)
+              }}
+            />
           </div>
         )}
+
       </CardContent>
 
       <CardFooter className="justify-between border-t border-border/70 bg-transparent px-3 py-2.5">
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Icon icon={videoFrameLinear} className="size-3.5" />
-          {normalizedStatus === 'completed' ? '可继续编辑' : '后台处理中'}
+          {normalizedStatus === 'completed'
+            ? '可预览和下载'
+            : normalizedStatus === 'failed'
+              ? '处理失败'
+              : normalizedStatus === 'pending'
+                ? '等待处理'
+                : '后台处理中'}
         </span>
         <div className="flex items-center gap-1">
           {canRetry && (
@@ -495,7 +523,8 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
                   type="button"
                   variant="ghost"
                   size="icon-sm"
-                  onClick={() => toast.info('下载功能开发中')}
+                  onClick={() => void handleDownloadVideo()}
+                  disabled={isDownloadingVideo}
                   aria-label="下载项目"
                 >
                   <Icon icon={downloadLinear} />
@@ -518,7 +547,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
             </Tooltip>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>删除“{project.name}”？</AlertDialogTitle>
+                <AlertDialogTitle>删除“{displayName}”？</AlertDialogTitle>
                 <AlertDialogDescription>
                   项目及相关处理结果将被永久删除，此操作无法撤销。
                 </AlertDialogDescription>

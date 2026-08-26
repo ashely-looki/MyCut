@@ -1,7 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react'
+import { Icon } from '@iconify/react'
+import homeSmileLinear from '@iconify-icons/solar/home-smile-linear'
+import shieldKeyholeLinear from '@iconify-icons/solar/shield-keyhole-linear'
 import { Layout, Typography, Table, Input, Switch, Button, Modal, InputNumber, message, Segmented, Card, Alert } from 'antd'
 import type { ColumnsType } from 'antd/es/table'
 import dayjs from 'dayjs'
+import { Link } from 'react-router-dom'
 import {
   adminApi,
   AdminOverview,
@@ -12,6 +16,14 @@ import { useAuth } from '../context/AuthContext'
 import AiModelConfig from '../components/AiModelConfig'
 import SpeechRecognitionConfig from '../components/SpeechRecognitionConfig'
 import WorkspacePageHeader from '../components/WorkspacePageHeader'
+import { Button as UiButton } from '../components/ui/button'
+import {
+  Card as UiCard,
+  CardContent as UiCardContent,
+  CardDescription as UiCardDescription,
+  CardHeader as UiCardHeader,
+  CardTitle as UiCardTitle,
+} from '../components/ui/card'
 
 const { Content } = Layout
 const { Text } = Typography
@@ -179,30 +191,33 @@ const AdminPage: React.FC = () => {
   // 未开启登录 / 非管理员 → 安静的无权限态
   if (!authEnabled || !isAdmin) {
     return (
-      <Content style={{ padding: '64px 56px 48px', minHeight: 'calc(100vh - 64px)' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+      <Content className="min-h-[calc(100svh-3.5rem)] bg-[var(--workspace-background)] px-6 pb-16 pt-10">
+        <div className="w-full max-w-[1100px]">
           <WorkspacePageHeader
-            eyebrow="管理控制台"
             title="管理者后台"
             description="集中查看用户、会员、订单与模型配置。"
           />
-          <div
-            style={{
-              maxWidth: 480,
-              margin: '28px auto 0',
-              textAlign: 'center',
-              color: 'var(--ac-sub)',
-            }}
-          >
-            <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--ac-ink)', marginBottom: 8 }}>
-              无后台权限
-            </div>
-            <div style={{ fontSize: 14 }}>
-              {authEnabled
-                ? `当前账号（${user?.email ?? '未知'}）不在管理员白名单内。`
-                : '未开启登录，管理者后台不可用。'}
-            </div>
-          </div>
+          <UiCard className="mx-auto mt-7 max-w-[520px] border-border/70 bg-card shadow-none">
+            <UiCardHeader className="items-center px-6 pb-0 pt-8 text-center sm:px-9 sm:pt-9">
+              <span className="flex size-11 items-center justify-center rounded-xl bg-secondary text-foreground">
+                <Icon icon={shieldKeyholeLinear} className="size-5" />
+              </span>
+              <UiCardTitle className="pt-4 text-lg">无后台权限</UiCardTitle>
+              <UiCardDescription className="max-w-[400px] pt-1 leading-6">
+                {authEnabled
+                  ? `当前账号（${user?.email ?? '未知'}）不在管理员白名单内。`
+                  : '未开启登录，管理者后台不可用。'}
+              </UiCardDescription>
+            </UiCardHeader>
+            <UiCardContent className="flex justify-center px-6 pb-8 pt-6 sm:px-9 sm:pb-9">
+              <UiButton asChild variant="secondary">
+                <Link to="/">
+                  <Icon icon={homeSmileLinear} className="size-4" />
+                  返回工作台
+                </Link>
+              </UiButton>
+            </UiCardContent>
+          </UiCard>
         </div>
       </Content>
     )
@@ -319,10 +334,9 @@ const AdminPage: React.FC = () => {
   ]
 
   return (
-    <Content style={{ padding: '64px 56px 48px', minHeight: 'calc(100vh - 64px)' }}>
-      <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+    <Content style={{ padding: '40px 24px 48px', minHeight: 'calc(100vh - 64px)' }}>
+      <div style={{ maxWidth: 1100 }}>
         <WorkspacePageHeader
-          eyebrow="管理控制台"
           title="管理者后台"
           description={user?.email ? `当前管理员：${user.email}` : '集中查看用户、会员、订单与模型配置。'}
         />

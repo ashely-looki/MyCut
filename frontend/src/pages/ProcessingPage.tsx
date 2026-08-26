@@ -12,6 +12,7 @@ import videoFrameLinear from '@iconify-icons/solar/video-frame-linear'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
+import SecondaryPageNavigation from '@/components/SecondaryPageNavigation'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -47,6 +48,7 @@ const ProcessingPage = () => {
   const [loading, setLoading] = useState(true)
   const completionHandled = useRef(false)
   const errorNotified = useRef(false)
+  const loadErrorNotified = useRef(false)
 
   const isComposeProject = Boolean(currentProject?.settings?.compose)
   const steps = useMemo(
@@ -60,12 +62,12 @@ const ProcessingPage = () => {
             { title: '完成校验', description: '生成可预览、可下载的成片' },
           ]
         : [
-            { title: '大纲提取', description: '从视频转写文本中提取结构大纲' },
-            { title: '时间定位', description: '基于字幕定位话题时间区间' },
-            { title: '内容评分', description: '评估片段质量与传播潜力' },
-            { title: '标题生成', description: '为高分片段生成标题' },
-            { title: '主题聚类', description: '将相关片段聚合为合集推荐' },
-            { title: '视频切割', description: '生成切片与合集视频' },
+            { title: '素材解析', description: '识别视频内容、人物与画面结构' },
+            { title: '文案识别', description: '转写语音并校准字幕时间' },
+            { title: '节奏分析', description: '定位需要保留的重点内容' },
+            { title: '镜头编排', description: '重组画面并优化叙事节奏' },
+            { title: '音画优化', description: '统一字幕、声音和画面表现' },
+            { title: '导出成片', description: '生成可预览、可下载的视频' },
           ],
     [isComposeProject],
   )
@@ -85,6 +87,7 @@ const ProcessingPage = () => {
   const loadProject = useCallback(async () => {
     if (!id) return
 
+    setLoading(true)
     try {
       const project = await projectApi.getProject(id)
       setCurrentProject(project)
@@ -98,7 +101,10 @@ const ProcessingPage = () => {
         await startProcessing()
       }
     } catch (error) {
-      toast.error('项目加载失败，请稍后重试')
+      if (!loadErrorNotified.current) {
+        loadErrorNotified.current = true
+        toast.error('项目加载失败，请稍后重试')
+      }
       console.error('Load project error:', error)
     } finally {
       setLoading(false)
@@ -127,7 +133,7 @@ const ProcessingPage = () => {
 
       if (error.response?.status === 404) {
         toast.error('项目不存在或已被删除')
-        window.setTimeout(() => navigate('/'), 2000)
+        window.setTimeout(() => navigate('/projects'), 2000)
       } else if (error.code === 'ECONNABORTED') {
         toast.warning('连接超时，正在自动重试')
       }
@@ -137,6 +143,7 @@ const ProcessingPage = () => {
   useEffect(() => {
     completionHandled.current = false
     errorNotified.current = false
+    loadErrorNotified.current = false
     void loadProject().then(checkStatus)
     const interval = window.setInterval(checkStatus, 2000)
 
@@ -166,6 +173,10 @@ const ProcessingPage = () => {
     return (
       <main className="min-h-[calc(100svh-3.5rem)] bg-[var(--workspace-background)] px-4 py-12 sm:px-6 md:min-h-svh lg:px-8">
         <div className="mx-auto max-w-5xl space-y-8">
+          <SecondaryPageNavigation
+            backTo="/projects"
+            backLabel="我的项目"
+          />
           <div className="mx-auto flex max-w-xl flex-col items-center gap-4 py-8">
             <Skeleton className="h-7 w-24 rounded-full" />
             <Skeleton className="h-10 w-72 rounded-xl" />
@@ -181,6 +192,35 @@ const ProcessingPage = () => {
     )
   }
 
+  if (!currentProject || currentProject.id !== id) {
+    return (
+      <main className="min-h-[calc(100svh-3.5rem)] bg-[var(--workspace-background)] px-4 py-10 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-3xl space-y-6">
+          <SecondaryPageNavigation
+            backTo="/projects"
+            backLabel="我的项目"
+          />
+          <Alert variant="destructive" className="rounded-[20px]">
+            <Icon icon={dangerCircleLinear} className="size-5" />
+            <AlertTitle>项目加载失败</AlertTitle>
+            <AlertDescription className="mt-2">
+              <p>没有找到对应项目，或当前连接暂时不可用。</p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button type="button" variant="outline" onClick={() => void loadProject()}>
+                  <Icon icon={restartCircleLinear} />
+                  重新加载
+                </Button>
+                <Button type="button" variant="secondary" onClick={() => navigate('/projects')}>
+                  返回我的项目
+                </Button>
+              </div>
+            </AlertDescription>
+          </Alert>
+        </div>
+      </main>
+    )
+  }
+
   const isError = status?.status === 'error'
   const isCompleted = status?.status === 'completed'
   const heading = isError
@@ -188,6 +228,7 @@ const ProcessingPage = () => {
     : isCompleted
       ? '你的成片已准备好'
       : '正在生成你的成片'
+  const displayProjectName = currentProject.name.replace(/^成片(?:\s*[：:]\s*)?/, '').trim() || currentProject.name
 
   return (
     <main className="relative min-h-[calc(100svh-3.5rem)] overflow-hidden bg-[var(--workspace-background)] px-4 pb-16 pt-10 sm:px-6 sm:pt-14 md:min-h-svh lg:px-8">
@@ -197,6 +238,12 @@ const ProcessingPage = () => {
       />
 
       <div className="relative mx-auto max-w-5xl">
+        <SecondaryPageNavigation
+          backTo="/projects"
+          backLabel="我的项目"
+          className="mb-7"
+        />
+
         <section className="mx-auto mb-9 flex max-w-2xl flex-col items-center text-center sm:mb-11">
           <Badge className="mb-4 gap-1.5 border-0 bg-[var(--brand-soft)] px-3 py-1.5 text-foreground shadow-none hover:bg-[var(--brand-soft)]">
             <Icon icon={starsMinimalisticLinear} className="size-3.5 text-primary" />
@@ -207,7 +254,7 @@ const ProcessingPage = () => {
           </h1>
           <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground sm:text-base">
             {isError
-              ? '项目内容已保留，你可以重新连接或返回工作台继续处理。'
+              ? '项目内容已保留，你可以重新连接或返回项目列表继续处理。'
               : isCompleted
                 ? '生成结果已经完成，即将为你打开预览。'
                 : 'MyCut 正在完成画面、字幕和声音的组合，你可以离开此页面，任务会在后台继续。'}
@@ -232,8 +279,8 @@ const ProcessingPage = () => {
                   <Icon icon={restartCircleLinear} />
                   重新连接
                 </Button>
-                <Button type="button" variant="secondary" className="rounded-full" onClick={() => navigate('/')}>
-                  返回工作台
+                <Button type="button" variant="secondary" className="rounded-full" onClick={() => navigate('/projects')}>
+                  返回我的项目
                 </Button>
               </div>
             </AlertDescription>
@@ -249,7 +296,7 @@ const ProcessingPage = () => {
                 </div>
                 <div className="min-w-0">
                   <CardTitle className="truncate text-lg sm:text-xl">
-                    {currentProject?.name || '未命名项目'}
+                    {displayProjectName}
                   </CardTitle>
                   <CardDescription className="mt-1">
                     {isComposeProject ? 'AI 自动成片任务' : '视频智能拆解任务'}

@@ -1,20 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Icon } from '@iconify/react'
-import addCircleBold from '@iconify-icons/solar/add-circle-bold'
-import checkCircleLinear from '@iconify-icons/solar/check-circle-linear'
 import clockCircleLinear from '@iconify-icons/solar/clock-circle-linear'
 import documentTextLinear from '@iconify-icons/solar/document-text-linear'
-import lightbulbLinear from '@iconify-icons/solar/lightbulb-linear'
-import magicStick2Linear from '@iconify-icons/solar/magic-stick-2-linear'
+import downloadLinear from '@iconify-icons/solar/download-linear'
 import magniferLinear from '@iconify-icons/solar/magnifer-linear'
+import menuDotsLinear from '@iconify-icons/solar/menu-dots-linear'
 import penNewSquareLinear from '@iconify-icons/solar/pen-new-square-linear'
 import restartCircleLinear from '@iconify-icons/solar/restart-circle-linear'
 import scissorsLinear from '@iconify-icons/solar/scissors-linear'
 import trashBinLinear from '@iconify-icons/solar/trash-bin-minimalistic-linear'
 import videoFramePlayBold from '@iconify-icons/solar/video-frame-play-horizontal-bold'
-import videoFramePlayLinear from '@iconify-icons/solar/video-frame-play-horizontal-linear'
 import dayjs from 'dayjs'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import {
@@ -29,8 +26,18 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   Select,
   SelectContent,
@@ -57,13 +64,16 @@ const CAPTION_STYLE_OPTIONS: { value: CaptionStyle; label: string; description: 
   { value: 'karaoke', label: '逐字点亮', description: '跟随口播逐字强调，更适合节奏鲜明的短视频。' },
 ]
 
-const WORKFLOW_STEPS = [
-  { icon: lightbulbLinear, label: '确定选题', description: '从热点或自己的想法开始' },
-  { icon: documentTextLinear, label: '编辑文案', description: '完善大纲、口播与画面提示' },
-  { icon: videoFramePlayLinear, label: '生成成片', description: '选择字幕样式并自动生成视频' },
-]
+const SEGMENT_ROLE_LABEL: Record<SavedScript['segments'][number]['role'], string> = {
+  hook: '开头钩子',
+  body: '正文',
+  cta: '结尾号召',
+}
 
 type SortOption = 'updated' | 'created' | 'title'
+type ScriptStatusFilter = 'draft' | 'ready'
+type DateFilter = 'all' | '7' | '30'
+type ExportFormat = 'txt' | 'md' | 'json' | 'srt'
 
 function getRequestErrorMessage(error: unknown, fallback: string) {
   if (typeof error === 'object' && error !== null && 'response' in error) {
@@ -86,16 +96,91 @@ function formatDuration(seconds: number) {
   return remaining ? `${minutes} 分 ${remaining} 秒` : `${minutes} 分钟`
 }
 
+function formatSrtTime(totalSeconds: number) {
+  const milliseconds = Math.max(0, Math.round(totalSeconds * 1000))
+  const hours = Math.floor(milliseconds / 3_600_000)
+  const minutes = Math.floor((milliseconds % 3_600_000) / 60_000)
+  const seconds = Math.floor((milliseconds % 60_000) / 1000)
+  const remainder = milliseconds % 1000
+  return [hours, minutes, seconds].map((part) => String(part).padStart(2, '0')).join(':') + `,${String(remainder).padStart(3, '0')}`
+}
+
+function exportScript(script: SavedScript, format: ExportFormat) {
+  let content = ''
+  let mimeType = 'text/plain;charset=utf-8'
+
+  if (format === 'json') {
+    content = JSON.stringify(script, null, 2)
+    mimeType = 'application/json;charset=utf-8'
+  } else if (format === 'srt') {
+    let cursor = 0
+    content = (script.segments || []).map((segment, index) => {
+      const end = cursor + Math.max(1, segment.est_seconds || 1)
+      const block = `${index + 1}\n${formatSrtTime(cursor)} --> ${formatSrtTime(end)}\n${segment.narration.trim()}`
+      cursor = end
+      return block
+    }).join('\n\n')
+  } else {
+    const outline = script.outline
+    const lines = [
+      script.title,
+      '',
+      `切入角度：${script.angle || '—'}`,
+      `目标观众：${script.target_audience || '—'}`,
+      `表达风格：${script.style || '—'}`,
+      `目标时长：${script.est_duration || 0} 秒`,
+      '',
+      '开头钩子',
+      outline?.hook || '—',
+      '',
+      '正文要点',
+      ...(outline?.sections || []).flatMap((section, index) => [`${index + 1}. ${section.point}`, section.detail]),
+      '',
+      '结尾号召',
+      outline?.cta || '—',
+      '',
+      '分镜文案',
+      ...(script.segments || []).flatMap((segment, index) => [
+        `${index + 1}. ${SEGMENT_ROLE_LABEL[segment.role]} · ${segment.est_seconds} 秒`,
+        segment.narration,
+        `画面：${segment.visual}`,
+        '',
+      ]),
+    ]
+    content = format === 'md'
+      ? lines.map((line) => {
+          if (line === script.title) return `# ${line}`
+          if (['开头钩子', '正文要点', '结尾号召', '分镜文案'].includes(line)) return `## ${line}`
+          return line
+        }).join('\n')
+      : lines.join('\n')
+    mimeType = format === 'md' ? 'text/markdown;charset=utf-8' : mimeType
+  }
+
+  const blob = new Blob([content], { type: mimeType })
+  const url = URL.createObjectURL(blob)
+  const anchor = document.createElement('a')
+  const safeTitle = script.title.replace(/[\\/:*?"<>|]/g, '-').trim() || '未命名文案'
+  anchor.href = url
+  anchor.download = `${safeTitle}.${format}`
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
+
 const ScriptLibraryPage = () => {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const [scripts, setScripts] = useState<SavedScript[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortOption, setSortOption] = useState<SortOption>('updated')
+  const [dateFilter, setDateFilter] = useState<DateFilter>('all')
   const [composingId, setComposingId] = useState<string | null>(null)
   const [pendingScript, setPendingScript] = useState<SavedScript | null>(null)
   const [deleteTarget, setDeleteTarget] = useState<SavedScript | null>(null)
   const [captionStyle, setCaptionStyle] = useState<CaptionStyle>('classic')
+  const statusFilter: ScriptStatusFilter = searchParams.get('view') === 'drafts' ? 'draft' : 'ready'
+  const sectionTitle = statusFilter === 'draft' ? '草稿箱' : '历史文案'
 
   const load = async () => {
     setLoading(true)
@@ -114,8 +199,14 @@ const ScriptLibraryPage = () => {
 
   const visibleScripts = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLocaleLowerCase()
-    const filtered = normalizedQuery
-      ? scripts.filter((script) => {
+    const dateThreshold = dateFilter === 'all' ? 0 : dayjs().subtract(Number(dateFilter), 'day').valueOf()
+    const filtered = scripts.filter((script) => {
+      const isReady = Boolean(script.segments?.length)
+      if (statusFilter === 'draft' && isReady) return false
+      if (statusFilter === 'ready' && !isReady) return false
+      if (dateThreshold && scriptTimestamp(script, 'updated_at') < dateThreshold) return false
+
+      if (normalizedQuery) {
           const searchableText = [
             script.title,
             script.outline?.hook,
@@ -124,24 +215,22 @@ const ScriptLibraryPage = () => {
             script.style,
           ].filter(Boolean).join(' ').toLocaleLowerCase()
           return searchableText.includes(normalizedQuery)
-        })
-      : [...scripts]
+      }
+      return true
+    })
 
     return filtered.sort((a, b) => {
       if (sortOption === 'title') return a.title.localeCompare(b.title, 'zh-CN')
       if (sortOption === 'created') return scriptTimestamp(b, 'created_at') - scriptTimestamp(a, 'created_at')
       return scriptTimestamp(b, 'updated_at') - scriptTimestamp(a, 'updated_at')
     })
-  }, [scripts, searchQuery, sortOption])
-
-  const totalSegments = scripts.reduce((sum, script) => sum + (script.segments?.length || 0), 0)
-  const totalDuration = scripts.reduce((sum, script) => sum + (script.est_duration || 0), 0)
+  }, [dateFilter, scripts, searchQuery, sortOption, statusFilter])
 
   const handleEdit = (script: SavedScript) => navigate('/script', { state: { savedScript: script } })
 
   const handleUseForClip = (script: SavedScript) => {
     const selected = { title: script.title, outline: script.outline, segments: script.segments }
-    navigate('/', { state: { attachedScript: JSON.stringify(selected) } })
+    navigate('/create', { state: { creationMode: 'upload', attachedScript: JSON.stringify(selected) } })
   }
 
   const openComposeSheet = (script: SavedScript) => {
@@ -166,8 +255,8 @@ const ScriptLibraryPage = () => {
       }
       await composeApi.fromScript(script.id, true, captionStyle)
       setPendingScript(null)
-      toast.success('已开始生成视频，去工作台查看进度')
-      navigate('/')
+      toast.success('已开始生成视频，可以查看实时进度')
+      navigate('/manage?tab=projects')
     } catch (error: unknown) {
       toast.error(getRequestErrorMessage(error, '启动生成视频失败'))
     } finally {
@@ -190,27 +279,15 @@ const ScriptLibraryPage = () => {
   }
 
   return (
-    <main className="min-h-[calc(100svh-3.5rem)] bg-[var(--workspace-background)] px-4 pb-16 pt-16 sm:px-6 lg:px-8 lg:pb-20">
-      <div className="mx-auto w-full max-w-[1240px]">
+    <main className="min-h-[calc(100svh-3.5rem)] bg-background px-6 pb-16 pt-10 lg:pb-20">
+      <div className="w-full max-w-[1240px]">
         <WorkspacePageHeader
-          eyebrow="内容工作区"
-          title="文案库"
-          description="集中管理选题、口播与分镜，并从这里继续剪辑或生成成片。"
-        >
-          {!loading && scripts.length > 0 && (
-            <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
-              <span>{scripts.length} 篇文案</span>
-              <span className="size-1 rounded-full bg-border" />
-              <span>{totalSegments} 个分镜</span>
-              <span className="size-1 rounded-full bg-border" />
-              <span>预计 {formatDuration(totalDuration)}</span>
-            </div>
-          )}
-        </WorkspacePageHeader>
+          title={sectionTitle}
+        />
 
-        <div className="mt-7 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <section aria-labelledby="library-list-heading">
-            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="grid items-start gap-5">
+          <section aria-labelledby="library-list-heading" className="@container">
+            <div className="mb-5 flex flex-col gap-3 md:flex-row md:items-center">
               <div className="relative min-w-0 flex-1">
                 <Icon icon={magniferLinear} className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -218,11 +295,21 @@ const ScriptLibraryPage = () => {
                   onChange={(event) => setSearchQuery(event.target.value)}
                   placeholder="搜索标题、钩子或风格"
                   aria-label="搜索文案"
-                  className="pl-10"
+                  className="border-transparent bg-muted pl-10"
                 />
               </div>
+              <Select value={dateFilter} onValueChange={(value) => setDateFilter(value as DateFilter)}>
+                <SelectTrigger className="w-full rounded-xl border-transparent bg-muted md:w-[148px]" aria-label="更新时间范围">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">全部时间</SelectItem>
+                  <SelectItem value="7">最近 7 天</SelectItem>
+                  <SelectItem value="30">最近 30 天</SelectItem>
+                </SelectContent>
+              </Select>
               <Select value={sortOption} onValueChange={(value) => setSortOption(value as SortOption)}>
-                <SelectTrigger className="w-full rounded-xl border-transparent bg-muted sm:w-[148px] dark:bg-input/30" aria-label="文案排序方式">
+                <SelectTrigger className="w-full rounded-xl border-transparent bg-muted md:w-[148px]" aria-label="文案排序方式">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -233,202 +320,191 @@ const ScriptLibraryPage = () => {
               </Select>
             </div>
 
-            <Card className="overflow-hidden shadow-none">
-              <CardHeader className="border-b border-border/70 pb-5">
-                <div className="flex items-center justify-between gap-4">
-                  <CardTitle id="library-list-heading" className="text-base">全部文案</CardTitle>
-                  {!loading && (
-                    <span className="text-xs text-muted-foreground tabular-nums">{visibleScripts.length} 个结果</span>
-                  )}
-                </div>
-              </CardHeader>
+            <h2 id="library-list-heading" className="sr-only">{sectionTitle}</h2>
 
-              <CardContent className="p-0">
-                {loading ? (
-                  <div className="divide-y divide-border/70">
-                    {[0, 1, 2].map((item) => (
-                      <div key={item} className="space-y-4 p-6">
-                        <div className="flex items-center gap-3">
-                          <Skeleton className="size-10 rounded-xl" />
-                          <div className="flex-1 space-y-2">
-                            <Skeleton className="h-4 w-2/5" />
-                            <Skeleton className="h-3 w-3/5" />
+            {loading ? (
+              <div className="grid gap-4 @[48rem]:grid-cols-2">
+                {[0, 1, 2, 3].map((item) => (
+                  <Card key={item} className="min-h-[360px] rounded-[20px] border-border/70 p-0 shadow-none">
+                    <CardHeader className="gap-4 p-5 pb-0">
+                      <div className="flex items-center justify-between">
+                        <Skeleton className="size-10 rounded-xl" />
+                        <Skeleton className="h-6 w-28 rounded-full" />
+                      </div>
+                      <div className="space-y-2">
+                        <Skeleton className="h-5 w-3/5" />
+                        <Skeleton className="h-4 w-4/5" />
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-5 p-5">
+                      <div className="flex gap-2">
+                        <Skeleton className="h-6 w-16 rounded-full" />
+                        <Skeleton className="h-6 w-20 rounded-full" />
+                        <Skeleton className="h-6 w-16 rounded-full" />
+                      </div>
+                      <Skeleton className="h-24 rounded-2xl" />
+                    </CardContent>
+                    <CardFooter className="mt-auto gap-2 border-t border-border/60 p-4">
+                      <Skeleton className="h-9 flex-1 rounded-[10px]" />
+                      <Skeleton className="h-9 flex-1 rounded-[10px]" />
+                      <Skeleton className="size-9 rounded-[10px]" />
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            ) : visibleScripts.length > 0 ? (
+              <div className="grid gap-4 @[48rem]:grid-cols-2">
+                {visibleScripts.map((script) => {
+                  const outlinePoints = script.outline?.sections?.map((section) => section.point).filter(Boolean).slice(0, 2) || []
+                  const updatedAt = script.updated_at || script.created_at
+                  const isDraft = !script.segments?.length
+
+                  return (
+                    <Card
+                      key={script.id}
+                      className="group flex min-h-[360px] flex-col overflow-hidden rounded-[20px] border-border/70 bg-card p-0 shadow-none transition-[border-color,box-shadow] hover:border-foreground/15 hover:shadow-sm"
+                    >
+                      <CardHeader className="gap-0 p-5 pb-0">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-foreground">
+                            <Icon icon={documentTextLinear} className="size-[18px]" />
+                          </span>
+                          <div className="flex min-w-0 items-center gap-2">
+                            <Badge variant="secondary" className="shrink-0 border-0 font-normal">
+                              {isDraft ? '草稿' : '已完成'}
+                            </Badge>
+                            <span className="truncate text-xs text-muted-foreground">
+                              {updatedAt ? `${dayjs(updatedAt).format('M 月 D 日 HH:mm')} 更新` : '最近更新'}
+                            </span>
                           </div>
                         </div>
-                        <Skeleton className="h-16 rounded-xl" />
-                      </div>
-                    ))}
-                  </div>
-                ) : visibleScripts.length > 0 ? (
-                  <div className="divide-y divide-border/70">
-                    {visibleScripts.map((script) => {
-                      const outlinePoints = script.outline?.sections?.map((section) => section.point).filter(Boolean).slice(0, 3) || []
-                      const updatedAt = script.updated_at || script.created_at
 
-                      return (
-                        <article key={script.id} className="group p-6 transition-colors hover:bg-muted/25 sm:p-7">
-                          <div className="flex items-start gap-4">
-                            <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-secondary text-foreground">
-                              <Icon icon={documentTextLinear} className="size-5" />
-                            </span>
-                            <div className="min-w-0 flex-1">
-                              <div className="flex flex-wrap items-start justify-between gap-x-4 gap-y-2">
-                                <button
-                                  type="button"
-                                  onClick={() => handleEdit(script)}
-                                  className="min-w-0 text-left outline-none focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-ring"
-                                >
-                                  <h2 className="truncate text-base font-semibold tracking-[-0.015em] group-hover:text-primary">{script.title}</h2>
-                                </button>
-                                <span className="shrink-0 text-xs text-muted-foreground">
-                                  {updatedAt ? `${dayjs(updatedAt).format('M 月 D 日 HH:mm')} 更新` : '最近更新'}
-                                </span>
-                              </div>
-                              <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
-                                {script.outline?.hook || '这篇文案还没有填写开头钩子。'}
-                              </p>
+                        <button
+                          type="button"
+                          onClick={() => handleEdit(script)}
+                          className="mt-4 min-w-0 text-left outline-none focus-visible:rounded-md focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <CardTitle className="line-clamp-2 text-[17px] leading-6 tracking-[-0.02em] transition-colors group-hover:text-primary">
+                            {script.title}
+                          </CardTitle>
+                        </button>
+                      </CardHeader>
 
-                              <div className="mt-4 flex flex-wrap items-center gap-2">
-                                <Badge variant="secondary" className="border-0 font-normal">{script.segments?.length || 0} 个分镜</Badge>
-                                {script.est_duration ? (
-                                  <Badge variant="secondary" className="border-0 gap-1.5 font-normal">
-                                    <Icon icon={clockCircleLinear} className="size-3.5" />
-                                    {formatDuration(script.est_duration)}
-                                  </Badge>
-                                ) : null}
-                                {script.style ? <Badge variant="secondary" className="border-0 font-normal">{script.style}</Badge> : null}
-                                <Badge
-                                  variant="secondary"
-                                  className={cn(
-                                    'border-0 gap-1.5 font-normal',
-                                    script.segments?.length ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : undefined,
-                                  )}
-                                >
-                                  <Icon icon={checkCircleLinear} className="size-3.5" />
-                                  {script.segments?.length ? '可生成视频' : '待完善'}
-                                </Badge>
-                              </div>
-                            </div>
-                          </div>
+                      <CardContent className="flex flex-1 flex-col px-5 pb-5 pt-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Badge variant="secondary" className="border-0 font-normal">{script.segments?.length || 0} 个分镜</Badge>
+                          {script.est_duration ? (
+                            <Badge variant="secondary" className="gap-1.5 border-0 font-normal">
+                              <Icon icon={clockCircleLinear} className="size-3.5" />
+                              {formatDuration(script.est_duration)}
+                            </Badge>
+                          ) : null}
+                          {script.style ? <Badge variant="secondary" className="border-0 font-normal">{script.style}</Badge> : null}
+                        </div>
 
-                          {outlinePoints.length > 0 && (
-                            <div className="mt-5 grid gap-2 rounded-2xl bg-muted/55 p-4 sm:grid-cols-[88px_minmax(0,1fr)]">
-                              <span className="text-xs font-medium text-muted-foreground">大纲快照</span>
-                              <div className="flex min-w-0 flex-wrap gap-x-4 gap-y-2 text-xs text-foreground/80">
-                                {outlinePoints.map((point, index) => (
-                                  <span key={`${point}-${index}`} className="inline-flex min-w-0 items-center gap-2">
-                                    <span className="size-1 rounded-full bg-primary" />
-                                    <span className="max-w-40 truncate">{point}</span>
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
+                        <div className="mt-5 min-h-[104px] rounded-2xl bg-muted/55 p-4">
+                          <span className="text-xs font-medium text-muted-foreground">大纲快照</span>
+                          {outlinePoints.length > 0 ? (
+                            <ul className="mt-3 space-y-2.5">
+                              {outlinePoints.map((point, index) => (
+                                <li key={`${point}-${index}`} className="flex min-w-0 items-start gap-2.5 text-xs leading-5 text-foreground/80">
+                                  <span className="mt-0.5 shrink-0 text-[10px] tabular-nums text-muted-foreground">{String(index + 1).padStart(2, '0')}</span>
+                                  <span className="line-clamp-1 min-w-0">{point}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p className="mt-3 text-xs leading-5 text-muted-foreground">继续编辑，补充内容大纲与分镜结构。</p>
                           )}
+                        </div>
+                      </CardContent>
 
-                          <div className="mt-5 flex flex-wrap items-center gap-2">
-                            <Button size="sm" variant="secondary" onClick={() => handleEdit(script)}>
-                              <Icon icon={penNewSquareLinear} />
-                              编辑文案
+                      <CardFooter className="gap-2 border-t border-border/60 bg-muted/15 p-4">
+                        <Button
+                          size="sm"
+                          variant={isDraft ? 'default' : 'secondary'}
+                          className="min-w-0 flex-1"
+                          onClick={() => handleEdit(script)}
+                        >
+                          <Icon icon={penNewSquareLinear} className={isDraft ? 'text-white' : undefined} />
+                          {isDraft ? '继续编辑' : '编辑文案'}
+                        </Button>
+                        {!isDraft && (
+                          <Button
+                            size="sm"
+                            className="min-w-0 flex-1"
+                            onClick={() => openComposeSheet(script)}
+                            disabled={composingId === script.id}
+                          >
+                            <Icon
+                              icon={composingId === script.id ? restartCircleLinear : videoFramePlayBold}
+                              className={composingId === script.id ? 'motion-safe:animate-spin' : 'text-white'}
+                            />
+                            生成视频
+                          </Button>
+                        )}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button size="icon-sm" variant="ghost" aria-label={`更多操作：${script.title}`}>
+                              <Icon icon={menuDotsLinear} />
                             </Button>
-                            <Button size="sm" variant="outline" onClick={() => handleUseForClip(script)}>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48 rounded-xl">
+                            <DropdownMenuItem onSelect={() => handleUseForClip(script)}>
                               <Icon icon={scissorsLinear} />
                               剪辑视频
-                            </Button>
-                            <Button size="sm" onClick={() => openComposeSheet(script)} disabled={composingId === script.id}>
-                              <Icon
-                                icon={composingId === script.id ? restartCircleLinear : videoFramePlayBold}
-                                className={composingId === script.id ? 'motion-safe:animate-spin' : 'text-white'}
-                              />
-                              生成视频
-                            </Button>
-                            <Button
-                              size="icon-sm"
-                              variant="ghost"
-                              className="ml-auto text-muted-foreground hover:text-destructive"
-                              aria-label={`删除文案 ${script.title}`}
-                              onClick={() => setDeleteTarget(script)}
-                            >
+                            </DropdownMenuItem>
+                            <DropdownMenuSub>
+                              <DropdownMenuSubTrigger>
+                                <Icon icon={downloadLinear} />
+                                导出文案
+                              </DropdownMenuSubTrigger>
+                              <DropdownMenuSubContent className="w-48 rounded-xl">
+                                <DropdownMenuItem onSelect={() => exportScript(script, 'md')}>Markdown (.md)</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => exportScript(script, 'txt')}>纯文本 (.txt)</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => exportScript(script, 'json')}>结构化数据 (.json)</DropdownMenuItem>
+                                <DropdownMenuItem disabled={isDraft} onSelect={() => exportScript(script, 'srt')}>字幕文件 (.srt)</DropdownMenuItem>
+                              </DropdownMenuSubContent>
+                            </DropdownMenuSub>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem variant="destructive" onSelect={() => setDeleteTarget(script)}>
                               <Icon icon={trashBinLinear} />
-                            </Button>
-                          </div>
-                        </article>
-                      )
-                    })}
+                              删除文案
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </CardFooter>
+                    </Card>
+                  )
+                })}
+              </div>
+            ) : scripts.length > 0 ? (
+              <Card className="border-border/70 shadow-none">
+                <CardContent className="flex min-h-[390px] flex-col items-center justify-center px-6 text-center">
+                  <span className="flex size-11 items-center justify-center rounded-xl bg-secondary text-muted-foreground">
+                    <Icon icon={magniferLinear} className="size-5" />
+                  </span>
+                  <h2 className="mt-4 text-sm font-semibold">没有找到匹配的文案</h2>
+                  <p className="mt-2 text-xs text-muted-foreground">换一个关键词，或清除当前搜索条件。</p>
+                  <Button className="mt-5" size="sm" variant="outline" onClick={() => setSearchQuery('')}>清除搜索</Button>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="border-border/70 shadow-none">
+                <CardContent className="flex min-h-[390px] flex-col items-center justify-center px-6 text-center">
+                  <span className="flex size-12 items-center justify-center rounded-2xl bg-secondary text-muted-foreground">
+                    <Icon icon={documentTextLinear} className="size-5" />
+                  </span>
+                  <h2 className="mt-5 text-base font-semibold">建立你的第一篇文案</h2>
+                  <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">从一个选题开始，依次完成大纲、分镜和成片。</p>
+                  <div className="mt-5 flex flex-wrap justify-center gap-2">
+                    <Button onClick={() => navigate('/create')}>开始创作</Button>
                   </div>
-                ) : scripts.length > 0 ? (
-                  <div className="flex min-h-[390px] flex-col items-center justify-center px-6 text-center">
-                    <span className="flex size-11 items-center justify-center rounded-xl bg-secondary text-muted-foreground">
-                      <Icon icon={magniferLinear} className="size-5" />
-                    </span>
-                    <h2 className="mt-4 text-sm font-semibold">没有找到匹配的文案</h2>
-                    <p className="mt-2 text-xs text-muted-foreground">换一个关键词，或清除当前搜索条件。</p>
-                    <Button className="mt-5" size="sm" variant="outline" onClick={() => setSearchQuery('')}>清除搜索</Button>
-                  </div>
-                ) : (
-                  <div className="flex min-h-[390px] flex-col items-center justify-center px-6 text-center">
-                    <span className="flex size-12 items-center justify-center rounded-2xl bg-secondary text-muted-foreground">
-                      <Icon icon={documentTextLinear} className="size-5" />
-                    </span>
-                    <h2 className="mt-5 text-base font-semibold">建立你的第一篇文案</h2>
-                    <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">从一个选题开始，依次完成大纲、分镜和成片。</p>
-                    <div className="mt-5 flex flex-wrap justify-center gap-2">
-                      <Button onClick={() => navigate('/script')}>新建文案</Button>
-                      <Button variant="outline" onClick={() => navigate('/hotspots')}>从热点开始</Button>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            )}
           </section>
 
-          <aside className="space-y-5">
-            <Card className="overflow-hidden border-0 bg-secondary/65 shadow-none">
-              <div aria-hidden="true" className="brand-gradient h-1.5 w-full" />
-              <CardHeader className="pb-5">
-                <span className="flex size-10 items-center justify-center rounded-xl bg-background text-primary shadow-sm dark:bg-card">
-                  <Icon icon={magicStick2Linear} className="size-5" />
-                </span>
-                <CardTitle className="pt-3 text-lg">开始下一篇创作</CardTitle>
-                <p className="text-sm leading-6 text-muted-foreground">可以从空白文案开始，也可以先查找适合你的热门选题。</p>
-              </CardHeader>
-              <CardContent className="space-y-2.5">
-                <Button className="w-full" onClick={() => navigate('/script')}>
-                  <Icon icon={addCircleBold} className="text-white" />
-                  新建空白文案
-                </Button>
-                <Button variant="outline" className="w-full bg-background dark:bg-card" onClick={() => navigate('/hotspots')}>
-                  <Icon icon={lightbulbLinear} />
-                  从热点选题开始
-                </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-none">
-              <CardHeader className="pb-5">
-                <CardTitle className="text-base">从想法到成片</CardTitle>
-                <p className="text-sm leading-6 text-muted-foreground">每篇文案都会经过同一套清晰流程。</p>
-              </CardHeader>
-              <CardContent>
-                <div className="relative space-y-0">
-                  <div aria-hidden="true" className="absolute bottom-7 left-5 top-7 w-px bg-border" />
-                  {WORKFLOW_STEPS.map((step, index) => (
-                    <div key={step.label} className="relative flex gap-4 py-3 first:pt-0 last:pb-0">
-                      <span className="z-10 flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-foreground">
-                        <Icon icon={step.icon} className="size-4" />
-                      </span>
-                      <div className="pt-0.5">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-muted-foreground tabular-nums">0{index + 1}</span>
-                          <p className="text-sm font-medium">{step.label}</p>
-                        </div>
-                        <p className="mt-1 text-xs leading-5 text-muted-foreground">{step.description}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </aside>
         </div>
       </div>
 

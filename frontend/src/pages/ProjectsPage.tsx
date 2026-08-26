@@ -3,12 +3,11 @@ import { Icon } from '@iconify/react'
 import folderOpenLinear from '@iconify-icons/solar/folder-open-linear'
 import magniferLinear from '@iconify-icons/solar/magnifer-linear'
 import uploadBold from '@iconify-icons/solar/upload-bold'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import ProjectCard from '@/components/ProjectCard'
 import WorkspacePageHeader from '@/components/WorkspacePageHeader'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -20,13 +19,6 @@ import type { Project } from '@/store/useProjectStore'
 import { useProjectStore } from '@/store/useProjectStore'
 
 type ProjectFilter = 'all' | 'active' | 'completed' | 'failed'
-
-const FILTER_OPTIONS: { value: ProjectFilter; label: string }[] = [
-  { value: 'all', label: '全部' },
-  { value: 'active', label: '处理中' },
-  { value: 'completed', label: '已完成' },
-  { value: 'failed', label: '失败' },
-]
 
 const ProjectSkeleton = () => (
   <Card className="overflow-hidden shadow-none">
@@ -47,10 +39,20 @@ const ProjectSkeleton = () => (
 
 const ProjectsPage = () => {
   const navigate = useNavigate()
+  const [searchParams, setSearchParams] = useSearchParams()
   const { projects, setProjects, deleteProject } = useProjectStore()
   const [loading, setLoading] = useState(projects.length === 0)
   const [searchQuery, setSearchQuery] = useState('')
-  const [filter, setFilter] = useState<ProjectFilter>('all')
+  const requestedFilter = searchParams.get('status')
+  const filter: ProjectFilter = ['active', 'completed', 'failed'].includes(requestedFilter || '')
+    ? requestedFilter as ProjectFilter
+    : 'all'
+  const sectionTitle: Record<ProjectFilter, string> = {
+    all: '全部项目',
+    active: '处理中',
+    completed: '已完成',
+    failed: '失败项目',
+  }
 
   useProjectPolling({
     onProjectsUpdate: (updatedProjects) => {
@@ -111,15 +113,13 @@ const ProjectsPage = () => {
         if (filter === 'failed') return project.status === 'failed' || project.status === 'error'
         return true
       })
-      .sort((a, b) => new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime())
+      .sort((a, b) => {
+        const activeA = a.status === 'pending' || a.status === 'processing' ? 1 : 0
+        const activeB = b.status === 'pending' || b.status === 'processing' ? 1 : 0
+        if (activeA !== activeB) return activeB - activeA
+        return new Date(b.updated_at || b.created_at).getTime() - new Date(a.updated_at || a.created_at).getTime()
+      })
   }, [filter, projects, searchQuery])
-
-  const projectCounts = useMemo(() => ({
-    all: projects.length,
-    active: projects.filter((project) => project.status === 'pending' || project.status === 'processing').length,
-    completed: projects.filter((project) => project.status === 'completed').length,
-    failed: projects.filter((project) => project.status === 'failed' || project.status === 'error').length,
-  }), [projects])
 
   const handleDeleteProject = async (id: string) => {
     try {
@@ -151,54 +151,26 @@ const ProjectsPage = () => {
   }
 
   return (
-    <main className="min-h-[calc(100svh-3.5rem)] bg-[var(--workspace-background)] px-4 pb-16 pt-16 sm:px-6 lg:px-8 lg:pb-20">
-      <div className="mx-auto w-full max-w-[1240px]">
+    <main className="min-h-[calc(100svh-3.5rem)] bg-background px-6 pb-16 pt-10 lg:pb-20">
+      <div className="w-full max-w-[1240px]">
         <WorkspacePageHeader
-          eyebrow="项目工作区"
-          title="项目"
-          description="查看处理状态，继续最近的剪辑工作。"
-          titleAddon={!loading && <Badge variant="secondary" className="border-0 font-normal tabular-nums">{projects.length}</Badge>}
-        >
-          <Button type="button" size="lg" className="self-start sm:self-auto" onClick={() => navigate('/', { state: { focusUpload: true } })}>
-            <Icon icon={uploadBold} className="text-white" />
-            新建项目
-          </Button>
-        </WorkspacePageHeader>
+          title={sectionTitle[filter]}
+          description="查看处理状态，预览、下载或继续最近的剪辑工作。"
+          className="pb-6"
+        />
 
-        <div className="mt-7 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div className="flex flex-wrap gap-2" aria-label="筛选项目状态">
-            {FILTER_OPTIONS.map((option) => {
-              const active = filter === option.value
-              return (
-                <Button
-                  key={option.value}
-                  type="button"
-                  size="sm"
-                  variant={active ? 'secondary' : 'ghost'}
-                  className={active ? 'bg-secondary' : 'text-muted-foreground'}
-                  onClick={() => setFilter(option.value)}
-                  aria-pressed={active}
-                >
-                  {option.label}
-                  <span className="tabular-nums text-muted-foreground">{projectCounts[option.value]}</span>
-                </Button>
-              )
-            })}
-          </div>
-
-          <div className="relative w-full lg:w-[300px]">
-            <Icon icon={magniferLinear} className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="搜索项目"
-              aria-label="搜索项目"
-              className="pl-10"
-            />
-          </div>
+        <div className="relative w-full">
+          <Icon icon={magniferLinear} className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="搜索项目"
+            aria-label="搜索项目"
+            className="border-transparent bg-muted pl-10"
+          />
         </div>
 
-        <section className="mt-5" aria-label="项目列表">
+        <section className="mt-6" aria-label="项目列表">
           {loading ? (
             <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
               <ProjectSkeleton />
@@ -230,11 +202,11 @@ const ProjectsPage = () => {
                   variant="outline"
                   className="mt-5"
                   onClick={() => {
-                    setFilter('all')
                     setSearchQuery('')
+                    setSearchParams({ tab: 'projects', status: 'all' })
                   }}
                 >
-                  清除筛选
+                  查看全部项目
                 </Button>
               </CardContent>
             </Card>
@@ -246,7 +218,7 @@ const ProjectsPage = () => {
                 </span>
                 <h2 className="mt-5 text-base font-semibold">还没有剪辑项目</h2>
                 <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">上传一段视频素材，创建你的第一个 AI 剪辑项目。</p>
-                <Button className="mt-5" onClick={() => navigate('/', { state: { focusUpload: true } })}>
+                <Button className="mt-5" onClick={() => navigate('/create', { state: { creationMode: 'upload' } })}>
                   <Icon icon={uploadBold} className="text-white" />
                   上传素材
                 </Button>

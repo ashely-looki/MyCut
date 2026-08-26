@@ -198,10 +198,7 @@ const TaskProgressModal: React.FC<TaskProgressModalProps> = ({
               <Progress 
                 percent={Math.round((status.current_step / status.total_steps) * 100)}
                 status={status.status === 'error' ? 'exception' : 'active'}
-                strokeColor={{
-                  '0%': '#E8710A',
-                  '100%': '#FF8C42'
-                }}
+                strokeColor="var(--ac-accent)"
               />
             </div>
 

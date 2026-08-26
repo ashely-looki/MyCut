@@ -151,6 +151,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     // 清理缩略图缓存
     const thumbnailCacheKey = `thumbnail_${id}`
     localStorage.removeItem(thumbnailCacheKey)
+    localStorage.removeItem(`thumbnail_v2_${id}`)
     
     set((state) => ({
       projects: state.projects.filter(p => p.id !== id),

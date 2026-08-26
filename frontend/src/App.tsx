@@ -4,13 +4,16 @@ import restartCircleLinear from '@iconify-icons/solar/restart-circle-linear'
 import { Route, Routes, useLocation } from 'react-router-dom'
 
 import { trackPageview } from '@/analytics/posthog'
-import Header from '@/components/Header'
+import { AppShellHeader } from '@/components/app-shell-header'
+import { AppSidebar } from '@/components/app-sidebar'
+import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { useAuth } from '@/context/AuthContext'
 import AdminPage from '@/pages/AdminPage'
 import HomePage from '@/pages/HomePage'
 import HotspotPage from '@/pages/HotspotPage'
 import LoginPage from '@/pages/LoginPage'
 import MembershipPage from '@/pages/MembershipPage'
+import ManagePage from '@/pages/ManagePage'
 import ProcessingPage from '@/pages/ProcessingPage'
 import ProjectDetailPage from '@/pages/ProjectDetailPage'
 import ProjectsPage from '@/pages/ProjectsPage'
@@ -32,6 +35,8 @@ function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<HomePage />} />
+      <Route path="/create" element={<ScriptEditorPage />} />
+      <Route path="/manage" element={<ManagePage />} />
       <Route path="/hotspots" element={<HotspotPage />} />
       <Route path="/projects" element={<ProjectsPage />} />
       <Route path="/scripts" element={<ScriptLibraryPage />} />
@@ -98,12 +103,19 @@ function App() {
   }
 
   return (
-    <div className="mycut-app-shell flex h-svh min-w-0 flex-col overflow-hidden bg-[var(--workspace-background)]">
-      <Header />
-      <div ref={pageViewportRef} className="mycut-page-viewport min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-scroll">
-        <AppRoutes />
-      </div>
-    </div>
+    <SidebarProvider className="mycut-app-shell h-svh min-h-0 overflow-hidden bg-sidebar">
+      <AppSidebar />
+      <SidebarInset className="min-h-0 min-w-0 overflow-hidden bg-background">
+        <AppShellHeader />
+        <div
+          ref={pageViewportRef}
+          className={`mycut-page-viewport min-h-0 min-w-0 flex-1 overflow-x-hidden ${location.pathname === '/' ? 'overflow-y-auto' : 'overflow-y-scroll'}`}
+          style={location.pathname === '/' ? { scrollbarGutter: 'auto' } : undefined}
+        >
+          <AppRoutes />
+        </div>
+      </SidebarInset>
+    </SidebarProvider>
   )
 }
 

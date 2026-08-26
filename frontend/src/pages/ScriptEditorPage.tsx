@@ -1,68 +1,94 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Icon } from '@iconify/react'
 import clockCircleLinear from '@iconify-icons/solar/clock-circle-linear'
 import disketteLinear from '@iconify-icons/solar/diskette-linear'
 import documentTextBold from '@iconify-icons/solar/document-text-bold'
-import documentTextLinear from '@iconify-icons/solar/document-text-linear'
 import lightbulbLinear from '@iconify-icons/solar/lightbulb-linear'
 import restartCircleLinear from '@iconify-icons/solar/restart-circle-linear'
-import scissorsLinear from '@iconify-icons/solar/scissors-linear'
 import videoFramePlayHorizontalBold from '@iconify-icons/solar/video-frame-play-horizontal-bold'
 import videoFramePlayHorizontalLinear from '@iconify-icons/solar/video-frame-play-horizontal-linear'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
-import { Badge } from '@/components/ui/badge'
+import FileUpload from '@/components/FileUpload'
+import HotspotPanel from '@/components/HotspotPanel'
+import SecondaryPageNavigation from '@/components/SecondaryPageNavigation'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Separator } from '@/components/ui/separator'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { cn } from '@/lib/utils'
 import { composeApi, scriptApi } from '@/services/api'
 import type { Outline, SavedScript, ScriptSegment, TopicCard } from '@/services/api'
 
 const STYLE_OPTIONS = ['干货', '热血', '亲和', '犀利', '轻松']
+
 const ROLE_LABEL: Record<ScriptSegment['role'], string> = {
   hook: '开头钩子',
-  body: '正文',
+  body: '正文要点',
   cta: '结尾号召',
 }
+
+type CreationMode = 'topic' | 'upload'
+type StudioStage = 'topic' | 'brief' | 'outline' | 'storyboard'
+const UNSAVED_DRAFT_KEY = 'mycut-unsaved-creation'
+
+const STAGES: { value: StudioStage; number: string; label: string; description: string }[] = [
+  { value: 'topic', number: '01', label: '确定选题', description: '搜索热点与创作方向' },
+  { value: 'brief', number: '02', label: '创作设置', description: '明确角度、观众与风格' },
+  { value: 'outline', number: '03', label: '内容大纲', description: '组织钩子、正文与号召' },
+  { value: 'storyboard', number: '04', label: '分镜文案', description: '调整口播、画面与时长' },
+]
 
 function getRequestErrorMessage(error: unknown, fallback: string) {
   if (typeof error === 'object' && error !== null && 'response' in error) {
     const response = (error as { response?: { data?: { detail?: string } } }).response
     if (response?.data?.detail) return response.data.detail
   }
-
   return fallback
+}
+
+function hasOutlineContent(outline: Outline | null) {
+  return Boolean(outline && (outline.hook.trim() || outline.cta.trim() || outline.sections.length))
 }
 
 const ScriptEditorPage = () => {
   const navigate = useNavigate()
   const location = useLocation()
-  const state = location.state as { topic?: TopicCard; savedScript?: SavedScript } | null
+  const state = location.state as {
+    topic?: TopicCard
+    savedScript?: SavedScript
+    creationMode?: CreationMode
+    attachedScript?: string
+  } | null
   const passedTopic = state?.topic
   const savedScript = state?.savedScript
+  const isSavedEditorRoute = location.pathname === '/script' && Boolean(savedScript)
+  const requestedMode: CreationMode = new URLSearchParams(location.search).get('mode') === 'upload'
+    ? 'upload'
+    : state?.creationMode || 'topic'
 
+  const initialStage: StudioStage = savedScript?.segments?.length
+    ? 'storyboard'
+    : hasOutlineContent(savedScript?.outline || null)
+      ? 'outline'
+      : passedTopic || savedScript
+        ? 'brief'
+        : 'topic'
+
+  const mode = requestedMode
+  const [stage, setStage] = useState<StudioStage>(initialStage)
   const [scriptId, setScriptId] = useState<string | null>(savedScript?.id || null)
   const [title, setTitle] = useState(savedScript?.title || passedTopic?.title || '')
   const [angle, setAngle] = useState(savedScript?.angle || passedTopic?.angle || '')
   const [audience, setAudience] = useState(savedScript?.target_audience || passedTopic?.target_audience || '')
-  const [keywords] = useState<string[]>(savedScript?.keywords || passedTopic?.keywords || [])
+  const [keywords, setKeywords] = useState<string[]>(savedScript?.keywords || passedTopic?.keywords || [])
   const [duration, setDuration] = useState(savedScript?.est_duration || 60)
   const [style, setStyle] = useState(savedScript?.style || '干货')
-
   const [outline, setOutline] = useState<Outline | null>(savedScript?.outline || null)
   const [segments, setSegments] = useState<ScriptSegment[]>(savedScript?.segments || [])
   const [loadingOutline, setLoadingOutline] = useState(false)
@@ -70,13 +96,57 @@ const ScriptEditorPage = () => {
   const [saving, setSaving] = useState(false)
   const [composing, setComposing] = useState(false)
   const [withScene, setWithScene] = useState(true)
+  const [dirty, setDirty] = useState(false)
+  const canvasRef = useRef<HTMLDivElement>(null)
+
+  const hasOutline = hasOutlineContent(outline)
+  const hasSegments = segments.length > 0
+  const totalSeconds = segments.reduce((sum, segment) => sum + (segment.est_seconds || 0), 0)
+
+  useEffect(() => {
+    sessionStorage.setItem(UNSAVED_DRAFT_KEY, dirty ? 'true' : 'false')
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!dirty) return
+      event.preventDefault()
+      event.returnValue = ''
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [dirty])
+
+  useEffect(() => () => sessionStorage.removeItem(UNSAVED_DRAFT_KEY), [])
+
+  const canOpenStage = (nextStage: StudioStage) => {
+    if (nextStage === 'topic' || nextStage === 'brief') return true
+    if (nextStage === 'outline') return hasOutline
+    return hasSegments
+  }
+
+  const openStage = (nextStage: StudioStage) => {
+    if (!canOpenStage(nextStage)) return
+    setStage(nextStage)
+    window.setTimeout(() => canvasRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30)
+  }
+
+  const markDirty = () => setDirty(true)
+
+  const handlePickTopic = (topic: TopicCard) => {
+    setTitle(topic.title || '')
+    setAngle(topic.angle || '')
+    setAudience(topic.target_audience || '')
+    setKeywords(topic.keywords || [])
+    setOutline(null)
+    setSegments([])
+    setDirty(true)
+    setStage('brief')
+    toast.success('选题已加入创作设置')
+  }
 
   const handleGenerateOutline = async () => {
     if (!title.trim()) {
       toast.warning('请填写选题标题')
       return
     }
-
     setLoadingOutline(true)
     try {
       const response = await scriptApi.generateOutline({
@@ -88,6 +158,8 @@ const ScriptEditorPage = () => {
       })
       setOutline(response)
       setSegments([])
+      setDirty(true)
+      setStage('outline')
     } catch (error: unknown) {
       toast.error(getRequestErrorMessage(error, '生成大纲失败'))
     } finally {
@@ -96,15 +168,16 @@ const ScriptEditorPage = () => {
   }
 
   const handleGenerateScript = async () => {
-    if (!outline) {
-      toast.warning('请先生成大纲')
+    if (!outline || !hasOutline) {
+      toast.warning('请先完善内容大纲')
       return
     }
-
     setLoadingScript(true)
     try {
       const response = await scriptApi.generateScript({ title: title.trim(), outline, style, duration })
       setSegments(response)
+      setDirty(true)
+      setStage('storyboard')
     } catch (error: unknown) {
       toast.error(getRequestErrorMessage(error, '生成文案失败'))
     } finally {
@@ -112,24 +185,34 @@ const ScriptEditorPage = () => {
     }
   }
 
-  const updateHook = (value: string) => outline && setOutline({ ...outline, hook: value })
-  const updateCta = (value: string) => outline && setOutline({ ...outline, cta: value })
-  const updateSection = (index: number, field: 'point' | 'detail', value: string) => {
+  const updateHook = (value: string) => {
     if (!outline) return
-    const sections = outline.sections.map((section, sectionIndex) => (
-      sectionIndex === index ? { ...section, [field]: value } : section
-    ))
-    setOutline({ ...outline, sections })
+    setOutline({ ...outline, hook: value })
+    markDirty()
   }
 
-  const updateSegment = <K extends keyof ScriptSegment>(
-    index: number,
-    field: K,
-    value: ScriptSegment[K],
-  ) => {
+  const updateCta = (value: string) => {
+    if (!outline) return
+    setOutline({ ...outline, cta: value })
+    markDirty()
+  }
+
+  const updateSection = (index: number, field: 'point' | 'detail', value: string) => {
+    if (!outline) return
+    setOutline({
+      ...outline,
+      sections: outline.sections.map((section, sectionIndex) => (
+        sectionIndex === index ? { ...section, [field]: value } : section
+      )),
+    })
+    markDirty()
+  }
+
+  const updateSegment = <K extends keyof ScriptSegment>(index: number, field: K, value: ScriptSegment[K]) => {
     setSegments((current) => current.map((segment, segmentIndex) => (
       segmentIndex === index ? { ...segment, [field]: value } : segment
     )))
+    markDirty()
   }
 
   const buildPayload = () => ({
@@ -148,22 +231,16 @@ const ScriptEditorPage = () => {
       toast.warning('请填写选题标题')
       return
     }
-    if (!outline) {
-      toast.warning('请先生成大纲再保存')
-      return
-    }
-
     setSaving(true)
     try {
-      const payload = buildPayload()
       if (scriptId) {
-        await scriptApi.update(scriptId, payload)
-        toast.success('文案已更新')
+        await scriptApi.update(scriptId, buildPayload())
       } else {
-        const created = await scriptApi.save(payload)
+        const created = await scriptApi.save(buildPayload())
         setScriptId(created.id)
-        toast.success('已保存到文案库')
       }
+      setDirty(false)
+      toast.success('已保存到草稿箱')
     } catch (error: unknown) {
       toast.error(getRequestErrorMessage(error, '保存失败'))
     } finally {
@@ -171,21 +248,11 @@ const ScriptEditorPage = () => {
     }
   }
 
-  const handleUseForClip = () => {
-    if (!outline) {
-      toast.warning('请先生成大纲')
-      return
-    }
-    const script = { title: title.trim(), outline, segments }
-    navigate('/', { state: { attachedScript: JSON.stringify(script) } })
-  }
-
   const handleCompose = async () => {
-    if (segments.length === 0) {
-      toast.warning('请先生成文案再生成视频')
+    if (!hasSegments) {
+      toast.warning('请先生成分镜文案')
       return
     }
-
     setComposing(true)
     try {
       const ready = await composeApi.ready()
@@ -193,21 +260,18 @@ const ScriptEditorPage = () => {
         toast.warning(ready.hint || '自动成片依赖未就绪')
         return
       }
-
       let id = scriptId
-      const payload = buildPayload()
       if (id) {
-        await scriptApi.update(id, payload)
+        await scriptApi.update(id, buildPayload())
       } else {
-        const created = await scriptApi.save(payload)
+        const created = await scriptApi.save(buildPayload())
         id = created.id
         setScriptId(created.id)
       }
-
-      if (!id) throw new Error('Missing script id')
-      await composeApi.fromScript(id, withScene)
-      toast.success(withScene ? '已开始生成视频（含信息动画）' : '已开始生成视频')
-      navigate('/')
+      const response = await composeApi.fromScript(id, withScene)
+      setDirty(false)
+      toast.success('视频已进入生成队列')
+      navigate(`/processing/${response.project_id}`)
     } catch (error: unknown) {
       toast.error(getRequestErrorMessage(error, '启动生成视频失败'))
     } finally {
@@ -215,354 +279,243 @@ const ScriptEditorPage = () => {
     }
   }
 
-  const totalSeconds = segments.reduce((sum, segment) => sum + (segment.est_seconds || 0), 0)
-  const hasSegments = segments.length > 0
-  const hasOutline = Boolean(outline)
+  const stageMeta = STAGES.find((item) => item.value === stage) || STAGES[0]
+  const stageHeader = stage === 'topic'
+    ? { label: '输入关键词，找到创作方向', description: '描述内容领域，可补充关键词以缩小选题范围。' }
+    : stageMeta
 
   return (
-    <main className="min-h-[calc(100svh-3.5rem)] bg-[var(--workspace-background)]">
-      <div className="sticky top-14 z-40 border-b border-border/70 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/88">
-        <div className="mx-auto flex w-full max-w-[1360px] flex-wrap items-center gap-3 px-4 py-3 sm:px-6 lg:px-8">
-          <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary text-foreground">
-            <Icon icon={documentTextLinear} className="size-5" />
-          </span>
-          <div className="mr-auto min-w-0">
-            <div className="flex items-center gap-2.5">
-              <h1 className="truncate text-lg font-semibold tracking-[-0.025em]">文案编辑</h1>
-              <Badge variant="secondary" className="border-0 font-normal">
-                {scriptId ? '已存文案' : '新文案'}
-              </Badge>
-            </div>
-            <p className="mt-0.5 hidden text-xs text-muted-foreground sm:block">选题、结构与分镜在同一个工作区完成</p>
-          </div>
+    <main className="min-h-[calc(100svh-4rem)] bg-background p-6">
+      <div className="w-full">
+        {isSavedEditorRoute && (
+          <SecondaryPageNavigation backTo="/manage?tab=scripts" backLabel="文案管理" />
+        )}
 
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <label className="flex h-9 cursor-pointer items-center gap-2 rounded-[10px] bg-secondary px-3 text-xs text-secondary-foreground">
-                  <Switch checked={withScene} onCheckedChange={setWithScene} aria-label="生成信息动画" />
-                  信息动画
-                </label>
-              </TooltipTrigger>
-              <TooltipContent side="bottom" className="max-w-72 leading-5">
-                为每句生成关键词、图标和步骤动画；关闭后仅生成字幕，出片更快。
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
-          <Button type="button" variant="outline" size="sm" disabled={!hasOutline || saving} onClick={() => void handleSave()}>
-            <Icon icon={saving ? restartCircleLinear : disketteLinear} className={saving ? 'motion-safe:animate-spin' : undefined} />
-            {saving ? '保存中' : scriptId ? '更新' : '保存'}
-          </Button>
-          <Button type="button" variant="outline" size="sm" disabled={!hasSegments} onClick={handleUseForClip}>
-            <Icon icon={scissorsLinear} />
-            剪辑视频
-          </Button>
-          <Button type="button" size="sm" disabled={!hasSegments || composing} onClick={() => void handleCompose()}>
-            <Icon
-              icon={composing ? restartCircleLinear : videoFramePlayHorizontalBold}
-              className={composing ? 'motion-safe:animate-spin' : 'text-white'}
-            />
-            {composing ? '正在生成' : '生成视频'}
-          </Button>
-        </div>
-      </div>
-
-      <div className="mx-auto grid w-full max-w-[1360px] items-start gap-5 px-4 py-6 sm:px-6 lg:grid-cols-[380px_minmax(0,1fr)] lg:px-8 lg:py-8">
-        <aside className="space-y-5">
-          <Card className="shadow-none">
-            <CardHeader className="pb-5">
-              <div className="flex items-center justify-between gap-3">
-                <CardTitle className="text-base">创作设置</CardTitle>
-                <span className="text-xs text-muted-foreground">01 / 03</span>
-              </div>
-              <p className="text-sm leading-6 text-muted-foreground">明确这篇内容要讲什么，以及讲给谁听。</p>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="script-title">选题标题</Label>
-                <Input
-                  id="script-title"
-                  value={title}
-                  onChange={(event) => setTitle(event.target.value)}
-                  placeholder="输入本期内容主题"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="script-angle">切入角度</Label>
-                <Textarea
-                  id="script-angle"
-                  value={angle}
-                  onChange={(event) => setAngle(event.target.value)}
-                  placeholder="这条内容具体讲什么"
-                  className="min-h-20 resize-none"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="script-audience">目标观众</Label>
-                <Input
-                  id="script-audience"
-                  value={audience}
-                  onChange={(event) => setAudience(event.target.value)}
-                  placeholder="这条内容要讲给谁听"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="script-duration">目标时长</Label>
-                  <div className="relative">
-                    <Input
-                      id="script-duration"
-                      type="number"
-                      min={10}
-                      max={600}
-                      value={duration}
-                      onChange={(event) => setDuration(Number(event.target.value) || 60)}
-                      className="pr-10 tabular-nums"
-                    />
-                    <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">秒</span>
+        <div className="min-h-[calc(100svh-7rem)]">
+          <div className={cn('grid min-h-[calc(100svh-7rem)] gap-6', mode === 'topic' && 'lg:grid-cols-[260px_minmax(0,1fr)]')}>
+            {mode === 'topic' && (
+              <aside className="flex min-w-0 flex-col">
+                <nav aria-label="创作阶段">
+                  <div className="flex snap-x gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:block lg:space-y-1.5 lg:overflow-visible lg:pb-0">
+                    {STAGES.map((item) => {
+                      const active = stage === item.value
+                      const enabled = canOpenStage(item.value)
+                      return (
+                        <Button
+                          key={item.value}
+                          type="button"
+                          variant="ghost"
+                          disabled={!enabled}
+                          onClick={() => openStage(item.value)}
+                          className={cn(
+                            'h-auto min-w-[166px] snap-start justify-start gap-3 rounded-xl px-2 py-3 text-left disabled:cursor-not-allowed disabled:opacity-38 lg:w-full lg:min-w-0',
+                            active ? 'bg-muted text-foreground shadow-none hover:bg-muted' : 'text-muted-foreground hover:bg-muted/55 hover:text-foreground',
+                          )}
+                        >
+                          <span className={cn('flex size-8 shrink-0 items-center justify-center rounded-full text-[11px] font-medium tabular-nums', active ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground')}>
+                            {item.number}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-xs font-medium">{item.label}</span>
+                            <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">{item.description}</span>
+                          </span>
+                        </Button>
+                      )
+                    })}
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="script-style">表达风格</Label>
-                  <Select value={style} onValueChange={setStyle}>
-                    <SelectTrigger id="script-style" className="rounded-xl border-transparent bg-muted dark:bg-input/30">
-                      <SelectValue placeholder="选择风格" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {STYLE_OPTIONS.map((option) => (
-                        <SelectItem key={option} value={option}>{option}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+                </nav>
 
-              <Separator />
-              <div className="grid grid-cols-2 gap-3">
-                <Button
-                  type="button"
-                  variant={hasOutline ? 'secondary' : 'default'}
-                  disabled={loadingOutline}
-                  onClick={() => void handleGenerateOutline()}
-                >
-                  <Icon
-                    icon={loadingOutline ? restartCircleLinear : lightbulbLinear}
-                    className={loadingOutline ? 'motion-safe:animate-spin' : undefined}
-                  />
-                  {loadingOutline ? '生成中' : hasOutline ? '重做大纲' : '生成大纲'}
-                </Button>
-                <Button
-                  type="button"
-                  variant={hasOutline && !hasSegments ? 'default' : 'secondary'}
-                  disabled={!hasOutline || loadingScript}
-                  onClick={() => void handleGenerateScript()}
-                >
-                  <Icon
-                    icon={loadingScript ? restartCircleLinear : documentTextBold}
-                    className={loadingScript ? 'motion-safe:animate-spin' : undefined}
-                  />
-                  {loadingScript ? '生成中' : hasSegments ? '重写文案' : '生成文案'}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="shadow-none">
-            <CardHeader className="pb-5">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <CardTitle className="text-base">内容大纲</CardTitle>
-                  <span className="text-xs text-muted-foreground">02 / 03</span>
+                <div className="mt-3 flex gap-2 px-2 lg:mt-auto lg:flex-col lg:pt-6">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="min-w-0 flex-1 lg:w-full"
+                    disabled={!title.trim() || saving}
+                    onClick={() => void handleSave()}
+                  >
+                    <Icon icon={saving ? restartCircleLinear : disketteLinear} className={saving ? 'motion-safe:animate-spin' : undefined} />
+                    {saving ? '保存中' : '保存草稿'}
+                  </Button>
+                  <Button
+                    type="button"
+                    className="min-w-0 flex-1 lg:w-full"
+                    disabled={!hasSegments || composing}
+                    onClick={() => void handleCompose()}
+                  >
+                    <Icon icon={composing ? restartCircleLinear : videoFramePlayHorizontalBold} className={composing ? 'motion-safe:animate-spin' : 'text-primary-foreground'} />
+                    {composing ? '正在启动' : '生成视频'}
+                  </Button>
                 </div>
-                {outline && (
-                  <Badge variant="secondary" className="border-0 font-normal tabular-nums">
-                    {outline.sections.length + 2} 个板块
-                  </Badge>
+              </aside>
+            )}
+
+            <Card
+              ref={canvasRef}
+              className={cn(
+                'flex min-w-0 scroll-mt-3 overflow-visible rounded-none border-0 shadow-none',
+                mode === 'topic' ? 'bg-muted' : 'bg-transparent',
+              )}
+            >
+              {mode === 'upload' ? (
+                <FileUpload
+                  attachedScript={state?.attachedScript || (outline ? JSON.stringify({ title: title.trim(), outline, segments }) : undefined)}
+                  onUploadSuccess={(projectId) => {
+                    toast.success('项目已创建，正在分析视频')
+                    navigate(`/processing/${projectId}`)
+                  }}
+                />
+            ) : (
+              <div className="flex min-h-full flex-1 flex-col p-6">
+                <header className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <h2 className="text-2xl font-medium tracking-[-0.03em]">{stageHeader.label}</h2>
+                    <p className="mt-2 text-sm text-muted-foreground">{stageHeader.description}</p>
+                  </div>
+                  {stage === 'storyboard' && hasSegments && (
+                    <div className="flex items-center gap-3 rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">
+                      <span>{segments.length} 个镜头</span>
+                      <span className="flex items-center gap-1.5 tabular-nums"><Icon icon={clockCircleLinear} />约 {totalSeconds} 秒</span>
+                    </div>
+                  )}
+                </header>
+
+                {stage === 'topic' && <HotspotPanel embedded onPickTopic={handlePickTopic} />}
+
+                {stage === 'brief' && (
+                  <div className="flex min-h-0 flex-1 flex-col gap-5">
+                    <div className="grid gap-5 rounded-[var(--studio-surface-radius)] bg-background p-5 sm:p-6 lg:grid-cols-2">
+                      <div className="space-y-2 lg:col-span-2">
+                        <Label htmlFor="script-title">选题标题</Label>
+                        <Input id="script-title" value={title} onChange={(event) => { setTitle(event.target.value); markDirty() }} placeholder="输入本期内容主题" className="bg-background" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="script-angle">切入角度</Label>
+                        <Textarea id="script-angle" value={angle} onChange={(event) => { setAngle(event.target.value); markDirty() }} placeholder="这条内容具体讲什么" className="min-h-28 resize-none bg-background" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="script-audience">目标观众</Label>
+                        <Textarea id="script-audience" value={audience} onChange={(event) => { setAudience(event.target.value); markDirty() }} placeholder="这条内容要讲给谁听" className="min-h-28 resize-none bg-background" />
+                      </div>
+                      <div className="space-y-2 lg:col-span-2">
+                        <Label htmlFor="script-keywords">内容关键词</Label>
+                        <Input id="script-keywords" value={keywords.join('、')} onChange={(event) => { setKeywords(event.target.value.split(/[、,，]/).map((item) => item.trim()).filter(Boolean)); markDirty() }} placeholder="例如：效率、AI、创作者" className="bg-background" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="script-duration">目标时长</Label>
+                        <Select value={String(duration)} onValueChange={(value) => { setDuration(Number(value)); markDirty() }}>
+                          <SelectTrigger id="script-duration" className="bg-background"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="30">30 秒</SelectItem>
+                            <SelectItem value="60">60 秒</SelectItem>
+                            <SelectItem value="90">90 秒</SelectItem>
+                            <SelectItem value="180">3 分钟</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="script-style">表达风格</Label>
+                        <Select value={style} onValueChange={(value) => { setStyle(value); markDirty() }}>
+                          <SelectTrigger id="script-style" className="bg-background"><SelectValue /></SelectTrigger>
+                          <SelectContent>{STYLE_OPTIONS.map((option) => <SelectItem key={option} value={option}>{option}</SelectItem>)}</SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <div className="mt-auto flex justify-end pt-5">
+                      <Button type="button" size="lg" disabled={loadingOutline} onClick={() => void handleGenerateOutline()}>
+                        <Icon icon={loadingOutline ? restartCircleLinear : lightbulbLinear} className={loadingOutline ? 'motion-safe:animate-spin' : undefined} />
+                        {loadingOutline ? '正在生成大纲' : hasOutline ? '重新生成大纲' : '生成大纲'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {stage === 'outline' && (
+                  <div className="space-y-4">
+                    {loadingOutline ? (
+                      <div className="space-y-3"><Skeleton className="h-28 rounded-[var(--studio-surface-radius)]" /><Skeleton className="h-56 rounded-[var(--studio-surface-radius)]" /><Skeleton className="h-28 rounded-[var(--studio-surface-radius)]" /></div>
+                    ) : outline ? (
+                      <>
+                        <div className="rounded-[var(--studio-surface-radius)] bg-background p-5">
+                          <div className="mb-3"><Label htmlFor="outline-hook">开头钩子</Label></div>
+                          <Textarea id="outline-hook" value={outline.hook} onChange={(event) => updateHook(event.target.value)} className="min-h-24 resize-none bg-background" />
+                        </div>
+                        <div className="rounded-[var(--studio-surface-radius)] bg-background p-5">
+                          <div className="mb-4 flex items-center justify-between"><Label>正文要点</Label><span className="text-xs text-muted-foreground">{outline.sections.length} 个部分</span></div>
+                          <div className="space-y-4">
+                            {outline.sections.map((section, index) => (
+                              <div key={index} className="grid grid-cols-[30px_minmax(0,1fr)] gap-3">
+                                <span className="flex size-7 items-center justify-center rounded-[9px] bg-foreground text-[10px] text-background">{String(index + 1).padStart(2, '0')}</span>
+                                <div className="space-y-2">
+                                  <Input value={section.point} onChange={(event) => updateSection(index, 'point', event.target.value)} className="bg-background font-medium" aria-label={`正文要点 ${index + 1}`} />
+                                  <Textarea value={section.detail} onChange={(event) => updateSection(index, 'detail', event.target.value)} className="min-h-20 resize-none bg-background" aria-label={`正文要点 ${index + 1} 详情`} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="rounded-[var(--studio-surface-radius)] bg-background p-5">
+                          <div className="mb-3"><Label htmlFor="outline-cta">结尾号召</Label></div>
+                          <Textarea id="outline-cta" value={outline.cta} onChange={(event) => updateCta(event.target.value)} className="min-h-24 resize-none bg-background" />
+                        </div>
+                        <div className="flex justify-end pt-1">
+                          <Button type="button" size="lg" disabled={loadingScript} onClick={() => void handleGenerateScript()}>
+                            <Icon icon={loadingScript ? restartCircleLinear : documentTextBold} className={loadingScript ? 'motion-safe:animate-spin' : undefined} />
+                            {loadingScript ? '正在生成分镜' : hasSegments ? '重新生成分镜' : '生成分镜文案'}
+                          </Button>
+                        </div>
+                      </>
+                    ) : null}
+                  </div>
+                )}
+
+                {stage === 'storyboard' && (
+                  <div className="space-y-4">
+                    {loadingScript ? (
+                      <div className="space-y-3"><Skeleton className="h-44 rounded-[var(--studio-surface-radius)]" /><Skeleton className="h-44 rounded-[var(--studio-surface-radius)]" /><Skeleton className="h-44 rounded-[var(--studio-surface-radius)]" /></div>
+                    ) : (
+                      segments.map((segment, index) => (
+                        <article key={`${segment.index}-${index}`} className="rounded-[var(--studio-surface-radius)] bg-background p-5 sm:p-6">
+                          <div className="mb-4 flex flex-wrap items-center gap-2.5">
+                            <span className="flex size-8 items-center justify-center rounded-[10px] bg-foreground text-[10px] tabular-nums text-background">{String(index + 1).padStart(2, '0')}</span>
+                            <span className="text-sm font-medium">{ROLE_LABEL[segment.role]}</span>
+                            <div className="ml-auto flex items-center gap-2">
+                              <Label htmlFor={`segment-duration-${index}`} className="text-xs font-normal text-muted-foreground">时长</Label>
+                              <Input id={`segment-duration-${index}`} type="number" min={0} value={segment.est_seconds} onChange={(event) => updateSegment(index, 'est_seconds', Number(event.target.value) || 0)} className="h-8 w-20 bg-background text-xs tabular-nums" />
+                            </div>
+                          </div>
+                          <div className="space-y-3">
+                            <Textarea value={segment.narration} onChange={(event) => updateSegment(index, 'narration', event.target.value)} placeholder="输入这一镜的口播文案" className="min-h-24 resize-y bg-background text-[15px] leading-7" aria-label={`镜头 ${index + 1} 口播文案`} />
+                            <div className="relative">
+                              <Icon icon={videoFramePlayHorizontalLinear} className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                              <Input value={segment.visual} onChange={(event) => updateSegment(index, 'visual', event.target.value)} placeholder="补充画面、构图或动效建议" className="bg-background pl-10 text-xs" aria-label={`镜头 ${index + 1} 画面建议`} />
+                            </div>
+                          </div>
+                        </article>
+                      ))
+                    )}
+                    <div className="flex flex-col gap-3 rounded-[var(--studio-surface-radius)] bg-foreground p-5 text-background sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <p className="text-sm font-medium">分镜已经准备好</p>
+                        <p className="mt-1 text-xs text-background/55">确认配音、字幕与信息动画后即可生成视频。</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-2 text-xs text-background/70">
+                          <Switch checked={withScene} onCheckedChange={setWithScene} aria-label="生成信息动画" />
+                          信息动画
+                        </label>
+                        <Button type="button" variant="secondary" disabled={composing} onClick={() => void handleCompose()}>
+                          <Icon icon={composing ? restartCircleLinear : videoFramePlayHorizontalBold} className={composing ? 'motion-safe:animate-spin' : undefined} />
+                          {composing ? '正在启动' : '生成视频'}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                 )}
               </div>
-              <p className="text-sm leading-6 text-muted-foreground">先确定叙事结构，再展开完整分镜。</p>
-            </CardHeader>
-            <CardContent>
-              {loadingOutline ? (
-                <div className="space-y-4" aria-label="正在生成大纲">
-                  <Skeleton className="h-20 rounded-xl" />
-                  <Skeleton className="h-28 rounded-xl" />
-                  <Skeleton className="h-20 rounded-xl" />
-                </div>
-              ) : outline ? (
-                <div className="space-y-5">
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-3">
-                      <Label htmlFor="outline-hook">开头钩子</Label>
-                      <span className="text-[11px] text-muted-foreground">HOOK</span>
-                    </div>
-                    <Textarea
-                      id="outline-hook"
-                      value={outline.hook}
-                      onChange={(event) => updateHook(event.target.value)}
-                      className="min-h-24 resize-none"
-                    />
-                  </div>
-
-                  <Separator />
-                  <div className="space-y-4">
-                    <Label>正文要点</Label>
-                    {outline.sections.map((section, index) => (
-                      <div key={index} className="grid grid-cols-[24px_minmax(0,1fr)] gap-3">
-                        <span className="mt-2 flex size-6 items-center justify-center rounded-full bg-secondary text-[11px] font-medium tabular-nums text-muted-foreground">
-                          {String(index + 1).padStart(2, '0')}
-                        </span>
-                        <div className="space-y-2">
-                          <Input
-                            value={section.point}
-                            onChange={(event) => updateSection(index, 'point', event.target.value)}
-                            placeholder={`要点 ${index + 1}`}
-                            className="font-medium"
-                            aria-label={`正文要点 ${index + 1}`}
-                          />
-                          <Textarea
-                            value={section.detail}
-                            onChange={(event) => updateSection(index, 'detail', event.target.value)}
-                            placeholder="补充这一部分的表达重点"
-                            className="min-h-20 resize-none"
-                            aria-label={`正文要点 ${index + 1} 详情`}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <Separator />
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-3">
-                      <Label htmlFor="outline-cta">结尾号召</Label>
-                      <span className="text-[11px] text-muted-foreground">CTA</span>
-                    </div>
-                    <Textarea
-                      id="outline-cta"
-                      value={outline.cta}
-                      onChange={(event) => updateCta(event.target.value)}
-                      className="min-h-24 resize-none"
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="flex min-h-48 flex-col items-center justify-center px-5 text-center">
-                  <span className="flex size-10 items-center justify-center rounded-xl bg-secondary text-muted-foreground">
-                    <Icon icon={lightbulbLinear} className="size-5" />
-                  </span>
-                  <p className="mt-4 text-sm font-medium">从创作设置开始</p>
-                  <p className="mt-1.5 max-w-56 text-xs leading-5 text-muted-foreground">填写标题后生成大纲，这里会出现可编辑的内容结构。</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </aside>
-
-        <Card className="min-h-[720px] overflow-hidden shadow-none">
-          <CardHeader className="border-b border-border/70 pb-5">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2.5">
-                  <CardTitle className="text-lg">分镜文案</CardTitle>
-                  <span className="text-xs text-muted-foreground">03 / 03</span>
-                </div>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">逐段调整口播内容、画面提示和节奏。</p>
-              </div>
-              {hasSegments && (
-                <div className="flex items-center gap-3 rounded-xl bg-secondary px-3 py-2 text-xs text-muted-foreground">
-                  <span>{segments.length} 个镜头</span>
-                  <span className="h-3 w-px bg-border" />
-                  <span className="inline-flex items-center gap-1.5 tabular-nums">
-                    <Icon icon={clockCircleLinear} className="size-3.5" />
-                    约 {totalSeconds} 秒
-                  </span>
-                </div>
-              )}
-            </div>
-          </CardHeader>
-
-          <CardContent className="p-0">
-            {loadingScript ? (
-              <div className="space-y-0 divide-y divide-border/70" aria-label="正在生成文案">
-                {[0, 1, 2].map((item) => (
-                  <div key={item} className="space-y-4 p-6 sm:p-7">
-                    <div className="flex items-center gap-3">
-                      <Skeleton className="h-7 w-12 rounded-full" />
-                      <Skeleton className="h-4 w-20" />
-                    </div>
-                    <Skeleton className="h-24 rounded-xl" />
-                    <Skeleton className="h-10 rounded-xl" />
-                  </div>
-                ))}
-              </div>
-            ) : hasSegments ? (
-              <div className="divide-y divide-border/70">
-                {segments.map((segment, index) => (
-                  <article key={`${segment.index}-${index}`} className="p-6 sm:p-7">
-                    <div className="mb-4 flex flex-wrap items-center gap-2.5">
-                      <Badge variant="secondary" className="border-0 font-normal tabular-nums">
-                        #{String(segment.index + 1).padStart(2, '0')}
-                      </Badge>
-                      <span className="text-sm font-medium">{ROLE_LABEL[segment.role]}</span>
-                      <div className="ml-auto flex items-center gap-2">
-                        <Label htmlFor={`segment-duration-${index}`} className="text-xs font-normal text-muted-foreground">时长</Label>
-                        <div className="relative w-[76px]">
-                          <Input
-                            id={`segment-duration-${index}`}
-                            type="number"
-                            min={0}
-                            value={segment.est_seconds}
-                            onChange={(event) => updateSegment(index, 'est_seconds', Number(event.target.value) || 0)}
-                            className="h-8 rounded-[10px] py-1 pl-3 pr-7 text-xs tabular-nums"
-                          />
-                          <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 text-[11px] text-muted-foreground">秒</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <Textarea
-                        value={segment.narration}
-                        onChange={(event) => updateSegment(index, 'narration', event.target.value)}
-                        placeholder="输入这一镜的口播文案"
-                        className="min-h-24 resize-y text-[15px] leading-7"
-                        aria-label={`镜头 ${index + 1} 口播文案`}
-                      />
-                      <div className="relative">
-                        <Icon
-                          icon={videoFramePlayHorizontalLinear}
-                          className="pointer-events-none absolute left-3.5 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-                        />
-                        <Input
-                          value={segment.visual}
-                          onChange={(event) => updateSegment(index, 'visual', event.target.value)}
-                          placeholder="补充画面、构图或动效建议"
-                          className="pl-10 text-xs"
-                          aria-label={`镜头 ${index + 1} 画面建议`}
-                        />
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <div className="flex min-h-[560px] flex-col items-center justify-center px-6 text-center">
-                <span className="flex size-12 items-center justify-center rounded-2xl bg-secondary text-muted-foreground">
-                  <Icon icon={documentTextLinear} className="size-5" />
-                </span>
-                <h2 className="mt-5 text-base font-semibold">还没有分镜内容</h2>
-                <p className="mt-2 max-w-sm text-sm leading-6 text-muted-foreground">
-                  完成左侧创作设置并生成大纲后，即可生成可直接编辑和成片的分镜文案。
-                </p>
-              </div>
             )}
-          </CardContent>
-        </Card>
+          </Card>
+        </div>
+        </div>
       </div>
     </main>
   )

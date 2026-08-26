@@ -3,16 +3,18 @@ import crownBold from '@iconify-icons/solar/crown-bold'
 import crownLinear from '@iconify-icons/solar/crown-linear'
 import documentTextBold from '@iconify-icons/solar/document-text-bold'
 import documentTextLinear from '@iconify-icons/solar/document-text-linear'
-import settingsBold from '@iconify-icons/solar/settings-bold'
-import settingsLinear from '@iconify-icons/solar/settings-linear'
-import shieldUserBold from '@iconify-icons/solar/shield-user-bold'
-import shieldUserLinear from '@iconify-icons/solar/shield-user-linear'
+import folderOpenBold from '@iconify-icons/solar/folder-open-bold'
+import folderOpenLinear from '@iconify-icons/solar/folder-open-linear'
+import notesBold from '@iconify-icons/solar/notes-bold'
+import notesLinear from '@iconify-icons/solar/notes-linear'
+import videoFramePlayHorizontalBold from '@iconify-icons/solar/video-frame-play-horizontal-bold'
+import videoFramePlayHorizontalLinear from '@iconify-icons/solar/video-frame-play-horizontal-linear'
 import widgetBold from '@iconify-icons/solar/widget-bold'
 import widgetLinear from '@iconify-icons/solar/widget-linear'
-import { useNavigate } from 'react-router-dom'
 
 import logoDark from '@/assets/logo-dark.svg'
 import logoLight from '@/assets/logo-light.svg'
+import logoMark from '@/assets/logo-mark.svg'
 import { NavMain, type NavItem } from '@/components/nav-main'
 import { NavUser } from '@/components/nav-user'
 import {
@@ -20,57 +22,99 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
-  SidebarRail,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
 } from '@/components/ui/sidebar'
-import { useAuth } from '@/context/AuthContext'
+import { useSafeNavigate } from '@/hooks/use-safe-navigate'
 
 export function AppSidebar(props: ComponentProps<typeof Sidebar>) {
-  const navigate = useNavigate()
-  const { isAdmin } = useAuth()
+  const navigateSafely = useSafeNavigate()
   const navigationItems: NavItem[] = [
     {
-      title: '工作台',
+      title: '首页',
       path: '/',
       icon: widgetLinear,
       activeIcon: widgetBold,
-      activePrefixes: ['/hotspots', '/processing', '/project'],
     },
     {
-      title: '文案库',
-      path: '/scripts',
+      title: '内容创作',
+      path: '/create?mode=topic',
       icon: documentTextLinear,
       activeIcon: documentTextBold,
-      activePrefixes: ['/script'],
+      activePrefixes: ['/hotspots', '/script'],
     },
-    { title: '会员', path: '/membership', icon: crownLinear, activeIcon: crownBold },
-    ...(isAdmin ? [{ title: '后台管理', path: '/admin', icon: shieldUserLinear, activeIcon: shieldUserBold }] : []),
-    { title: '设置', path: '/settings', icon: settingsLinear, activeIcon: settingsBold },
+    {
+      title: '智能剪辑',
+      path: '/create?mode=upload',
+      icon: videoFramePlayHorizontalLinear,
+      activeIcon: videoFramePlayHorizontalBold,
+    },
+    {
+      title: '文案管理',
+      path: '/manage?tab=scripts&view=history',
+      icon: notesLinear,
+      activeIcon: notesBold,
+      activePrefixes: ['/scripts'],
+      items: [
+        { title: '历史文案', path: '/manage?tab=scripts&view=history' },
+        { title: '草稿箱', path: '/manage?tab=scripts&view=drafts' },
+      ],
+    },
+    {
+      title: '项目管理',
+      path: '/manage?tab=projects&status=all',
+      icon: folderOpenLinear,
+      activeIcon: folderOpenBold,
+      activePrefixes: ['/projects', '/processing', '/project'],
+      items: [
+        { title: '全部', path: '/manage?tab=projects&status=all' },
+        { title: '处理中', path: '/manage?tab=projects&status=active' },
+        { title: '已完成', path: '/manage?tab=projects&status=completed' },
+        { title: '失败', path: '/manage?tab=projects&status=failed' },
+      ],
+    },
+    {
+      title: '会员',
+      path: '/membership',
+      icon: crownLinear,
+      activeIcon: crownBold,
+    },
   ]
 
   return (
     <Sidebar collapsible="icon" {...props}>
-      <SidebarHeader className="h-20 justify-center px-6 py-4 group-data-[collapsible=icon]:px-[18px]">
-        <button
-          type="button"
-          onClick={() => navigate('/')}
-          className="flex w-fit items-center rounded-lg outline-none focus-visible:ring-2 focus-visible:ring-sidebar-ring"
-          aria-label="前往 MyCut 工作台"
-        >
-          <img src={logoLight} alt="MyCut" className="h-7 w-auto dark:hidden group-data-[collapsible=icon]:hidden" />
-          <img src={logoDark} alt="MyCut" className="hidden h-7 w-auto dark:block group-data-[collapsible=icon]:hidden" />
-          <span className="hidden size-8 overflow-hidden group-data-[collapsible=icon]:block">
-            <img src={logoLight} alt="" className="h-7 max-w-none dark:hidden" />
-            <img src={logoDark} alt="" className="hidden h-7 max-w-none dark:block" />
-          </span>
-        </button>
+      <SidebarHeader className="p-2">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              type="button"
+              size="lg"
+              aria-label="MyCut 首页"
+              tooltip="MyCut 首页"
+              onClick={() => navigateSafely('/')}
+            >
+              <img
+                src={logoMark}
+                alt=""
+                className="hidden size-8 shrink-0 group-data-[collapsible=icon]:block"
+              />
+              <span className="flex min-w-0 flex-1 items-center overflow-hidden group-data-[collapsible=icon]:hidden">
+                <img src={logoLight} alt="MyCut" className="h-6 w-auto dark:hidden" />
+                <img src={logoDark} alt="MyCut" className="hidden h-6 w-auto dark:block" />
+              </span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent className="pt-1">
+
+      <SidebarContent>
         <NavMain items={navigationItems} />
       </SidebarContent>
-      <SidebarFooter className="px-3 pb-3">
+
+      <SidebarFooter className="p-2">
         <NavUser />
       </SidebarFooter>
-      <SidebarRail />
     </Sidebar>
   )
 }
