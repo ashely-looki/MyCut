@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { Icon } from '@iconify/react'
-import infoCircleLinear from '@iconify-icons/solar/info-circle-linear'
 import magniferBold from '@iconify-icons/solar/magnifer-bold'
 import magniferLinear from '@iconify-icons/solar/magnifer-linear'
 import restartLinear from '@iconify-icons/solar/restart-linear'
@@ -9,7 +8,6 @@ import { toast } from 'sonner'
 
 import TopicCard from './TopicCard'
 import { hotspotApi, TopicCard as TopicCardData } from '../services/api'
-import { Alert, AlertDescription } from './ui/alert'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
@@ -155,15 +153,6 @@ const HotspotPanel: React.FC<HotspotPanelProps> = ({ onPickTopic, embedded = fal
               {searching ? '正在查找' : '查热点'}
             </Button>
           </form>
-
-          {meta && !meta.search_available && (
-            <Alert className="mt-5 border-0 bg-muted/55 text-muted-foreground">
-              <Icon icon={infoCircleLinear} className="size-4" />
-              <AlertDescription>
-                当前未启用联网搜索，结果由 AI 根据领域知识生成，建议在使用前核对时效性。
-              </AlertDescription>
-            </Alert>
-          )}
         </CardContent>
       </Card>
 
