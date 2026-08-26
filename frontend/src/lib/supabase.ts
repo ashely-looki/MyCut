@@ -23,7 +23,28 @@ export const supabase: SupabaseClient | null = authEnabled
       auth: {
         persistSession: true,
         autoRefreshToken: true,
-        detectSessionInUrl: false, // HashRouter 环境，避免与路由 hash 冲突
+        // HashRouter 环境，避免与路由 hash 冲突；邮件链接回跳由 lib/auth-callback.ts 接管
+        detectSessionInUrl: false,
       },
     })
   : null
+
+/**
+ * 邮件确认链接点开后应该回到哪个地址。
+ *
+ * 不传这个参数时，Supabase 会用后台配置的 Site URL——本地开发期它常年是
+ * http://localhost:3000，线上注册的用户点开确认邮件就落到一个打不开的地址（白屏）。
+ * 所以这里按当前站点的 origin 动态给出，本地和线上各回各自的域名。
+ *
+ * 注意：给出的地址必须同时出现在 Supabase 后台 Authentication → URL Configuration 的
+ * Redirect URLs 白名单里，否则 Supabase 会忽略它、退回 Site URL。
+ * 需要写死时用 VITE_AUTH_REDIRECT_URL 覆盖。
+ */
+export function authRedirectUrl(): string | undefined {
+  const configured = import.meta.env.VITE_AUTH_REDIRECT_URL as string | undefined
+  if (configured) return configured
+  if (typeof window === 'undefined') return undefined
+  // Tauri 桌面端 origin 不是 http(s)，回跳没有意义，交回 Site URL 处理
+  if (!/^https?:$/.test(window.location.protocol)) return undefined
+  return `${window.location.origin}${window.location.pathname}`
+}

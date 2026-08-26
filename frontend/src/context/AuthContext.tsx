@@ -13,7 +13,9 @@
 
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
 import type { Session, User } from '@supabase/supabase-js'
-import { supabase, authEnabled } from '../lib/supabase'
+import { toast } from 'sonner'
+import { supabase, authEnabled, authRedirectUrl } from '../lib/supabase'
+import { consumeAuthCallback } from '../lib/auth-callback'
 import { setAuthToken } from './authTokenStore'
 import { adminApi } from '../services/api'
 
@@ -45,22 +47,38 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
       return
     }
 
-    // 1) 读取已持久化的会话
-    supabase.auth.getSession().then(({ data }) => {
+    let cancelled = false
+
+    const bootstrap = async () => {
+      // 1) 先消费邮件链接带回来的凭证（邮箱确认 / 找回密码），否则用户点完确认链接仍是未登录
+      const callback = await consumeAuthCallback()
+      if (callback?.kind === 'signed-in') {
+        toast.success(callback.type === 'recovery' ? '验证通过，请设置新密码' : '邮箱确认成功')
+      } else if (callback?.kind === 'error') {
+        toast.error(callback.message ?? '邮件链接验证失败')
+      }
+
+      // 2) 读取已持久化的会话
+      const { data } = await supabase!.auth.getSession()
+      if (cancelled) return
       setSession(data.session)
       setUser(data.session?.user ?? null)
       setAuthToken(data.session?.access_token ?? null)
       setLoading(false)
-    })
+    }
+    void bootstrap()
 
-    // 2) 订阅登录/登出/刷新 token 事件，保持 token 缓存与状态同步
+    // 3) 订阅登录/登出/刷新 token 事件，保持 token 缓存与状态同步
     const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession)
       setUser(newSession?.user ?? null)
       setAuthToken(newSession?.access_token ?? null)
     })
 
-    return () => sub.subscription.unsubscribe()
+    return () => {
+      cancelled = true
+      sub.subscription.unsubscribe()
+    }
   }, [])
 
   // 判定当前登录者是否管理员：token 变化后问一次后端（whoami 不鉴权、不抛错）。
@@ -97,7 +115,12 @@ export const AuthProvider: React.FC<React.PropsWithChildren> = ({ children }) =>
 
   const signUp = async (email: string, password: string) => {
     if (!supabase) throw new Error('未配置登录服务')
-    const { data, error } = await supabase.auth.signUp({ email, password })
+    // emailRedirectTo 必须传：不传的话确认邮件里的链接会跳去后台配的 Site URL
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { emailRedirectTo: authRedirectUrl() },
+    })
     if (error) throw error
     // 若 Supabase 后台开启了邮箱确认，signUp 不会立即返回 session，
     // 需要用户去邮箱点确认链接后才能登录。

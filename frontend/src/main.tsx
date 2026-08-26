@@ -17,11 +17,16 @@ import { Toaster } from './components/ui/sonner'
 import { TooltipProvider } from './components/ui/tooltip'
 import { initAnalytics } from './analytics/posthog'
 import { trackLaunch } from './analytics/lifecycle'
+import { captureAuthCallback } from './lib/auth-callback'
 import 'misans/lib/Normal/MiSans-Regular.min.css'
 import 'misans/lib/Normal/MiSans-Medium.min.css'
 import 'misans/lib/Normal/MiSans-Semibold.min.css'
 import 'misans/lib/Normal/MiSans-Bold.min.css'
 import './index.css'
+
+// 邮件确认链接会带回 `#access_token=...`，必须在 HashRouter 挂载前抄走并复位 hash，
+// 否则路由匹配不到、页面白屏（见 lib/auth-callback.ts）
+captureAuthCallback()
 
 // 初始化产品分析 / 埋点（无 key 时自动 no-op，不发任何网络请求）
 initAnalytics()
