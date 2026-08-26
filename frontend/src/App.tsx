@@ -56,6 +56,7 @@ function App() {
   const pageViewportRef = useRef<HTMLDivElement>(null)
   const { authEnabled, loading, user } = useAuth()
   const previewMode = new URLSearchParams(location.search).get('preview')
+  const isCreationWorkspace = location.pathname === '/create' || location.pathname === '/script'
   const hasLocalAppPreview =
     import.meta.env.DEV &&
     sessionStorage.getItem(LOCAL_APP_PREVIEW_KEY) === 'true'
@@ -109,7 +110,13 @@ function App() {
         <AppShellHeader />
         <div
           ref={pageViewportRef}
-          className={`mycut-page-viewport min-h-0 min-w-0 flex-1 overflow-x-hidden ${location.pathname === '/' ? 'overflow-y-auto' : 'overflow-y-scroll'}`}
+          className={`mycut-page-viewport min-h-0 min-w-0 flex-1 overflow-x-hidden ${
+            isCreationWorkspace
+              ? 'overflow-y-auto lg:overflow-y-hidden'
+              : location.pathname === '/'
+                ? 'overflow-y-auto'
+                : 'overflow-y-scroll'
+          }`}
           style={location.pathname === '/' ? { scrollbarGutter: 'auto' } : undefined}
         >
           <AppRoutes />

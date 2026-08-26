@@ -21,6 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton'
 import { Switch } from '@/components/ui/switch'
 import { Textarea } from '@/components/ui/textarea'
+import { createContentCreationDemoOutline, createContentCreationDemoSegments } from '@/data/contentCreationDemo'
 import { cn } from '@/lib/utils'
 import { composeApi, scriptApi } from '@/services/api'
 import type { Outline, SavedScript, ScriptSegment, TopicCard } from '@/services/api'
@@ -54,6 +55,12 @@ function getRequestErrorMessage(error: unknown, fallback: string) {
 
 function hasOutlineContent(outline: Outline | null) {
   return Boolean(outline && (outline.hook.trim() || outline.cta.trim() || outline.sections.length))
+}
+
+function resolveDemoContent<T>(factory: () => T, delay = 700): Promise<T> {
+  return new Promise((resolve) => {
+    window.setTimeout(() => resolve(factory()), delay)
+  })
 }
 
 const ScriptEditorPage = () => {
@@ -97,6 +104,7 @@ const ScriptEditorPage = () => {
   const [composing, setComposing] = useState(false)
   const [withScene, setWithScene] = useState(true)
   const [dirty, setDirty] = useState(false)
+  const [isDemoFlow, setIsDemoFlow] = useState(Boolean(passedTopic?.id.startsWith('demo-')))
   const canvasRef = useRef<HTMLDivElement>(null)
 
   const hasOutline = hasOutlineContent(outline)
@@ -137,6 +145,7 @@ const ScriptEditorPage = () => {
     setKeywords(topic.keywords || [])
     setOutline(null)
     setSegments([])
+    setIsDemoFlow(topic.id.startsWith('demo-'))
     setDirty(true)
     setStage('brief')
     toast.success('选题已加入创作设置')
@@ -149,17 +158,20 @@ const ScriptEditorPage = () => {
     }
     setLoadingOutline(true)
     try {
-      const response = await scriptApi.generateOutline({
-        title: title.trim(),
-        angle,
-        target_audience: audience,
-        keywords,
-        duration,
-      })
+      const response = isDemoFlow
+        ? await resolveDemoContent(() => createContentCreationDemoOutline(title.trim()))
+        : await scriptApi.generateOutline({
+            title: title.trim(),
+            angle,
+            target_audience: audience,
+            keywords,
+            duration,
+          })
       setOutline(response)
       setSegments([])
       setDirty(true)
       setStage('outline')
+      if (isDemoFlow) toast.success('演示大纲已生成，可以直接编辑')
     } catch (error: unknown) {
       toast.error(getRequestErrorMessage(error, '生成大纲失败'))
     } finally {
@@ -174,10 +186,13 @@ const ScriptEditorPage = () => {
     }
     setLoadingScript(true)
     try {
-      const response = await scriptApi.generateScript({ title: title.trim(), outline, style, duration })
+      const response = isDemoFlow
+        ? await resolveDemoContent(() => createContentCreationDemoSegments(outline), 850)
+        : await scriptApi.generateScript({ title: title.trim(), outline, style, duration })
       setSegments(response)
       setDirty(true)
       setStage('storyboard')
+      if (isDemoFlow) toast.success('演示分镜已生成，可以继续调整')
     } catch (error: unknown) {
       toast.error(getRequestErrorMessage(error, '生成文案失败'))
     } finally {
@@ -285,16 +300,16 @@ const ScriptEditorPage = () => {
     : stageMeta
 
   return (
-    <main className="min-h-[calc(100svh-4rem)] bg-background p-6">
-      <div className="w-full">
+    <main className="min-h-full bg-background p-6 lg:h-full lg:min-h-0 lg:overflow-hidden">
+      <div className="flex min-h-0 w-full flex-col lg:h-full">
         {isSavedEditorRoute && (
           <SecondaryPageNavigation backTo="/manage?tab=scripts" backLabel="文案管理" />
         )}
 
-        <div className="min-h-[calc(100svh-7rem)]">
-          <div className={cn('grid min-h-[calc(100svh-7rem)] gap-6', mode === 'topic' && 'lg:grid-cols-[260px_minmax(0,1fr)]')}>
+        <div className="min-h-[calc(100svh-7rem)] lg:min-h-0 lg:flex-1">
+          <div className={cn('grid min-h-[calc(100svh-7rem)] gap-6 lg:h-full lg:min-h-0', mode === 'topic' && 'lg:grid-cols-[260px_minmax(0,1fr)]')}>
             {mode === 'topic' && (
-              <aside className="flex min-w-0 flex-col">
+              <aside data-testid="creation-workflow-sidebar" className="flex min-w-0 flex-col lg:h-full lg:min-h-0 lg:overflow-hidden">
                 <nav aria-label="创作阶段">
                   <div className="flex snap-x gap-1.5 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:block lg:space-y-1.5 lg:overflow-visible lg:pb-0">
                     {STAGES.map((item) => {
@@ -351,8 +366,9 @@ const ScriptEditorPage = () => {
 
             <Card
               ref={canvasRef}
+              data-testid="creation-canvas-scroll"
               className={cn(
-                'flex min-w-0 scroll-mt-3 overflow-visible rounded-none border-0 shadow-none',
+                'flex min-w-0 scroll-mt-3 overflow-visible rounded-none border-0 shadow-none lg:h-full lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain',
                 mode === 'topic' ? 'bg-muted' : 'bg-transparent',
               )}
             >

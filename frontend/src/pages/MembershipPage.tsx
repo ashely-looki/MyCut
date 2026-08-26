@@ -334,7 +334,7 @@ const MembershipPage = () => {
                   </li>
                 ))}
               </ul>
-              <Button type="button" variant="secondary" size="lg" disabled className="mt-9 w-full">
+              <Button type="button" variant="secondary" size="lg" disabled className="mt-auto w-full">
                 {isMember ? '已包含基础能力' : '当前方案'}
               </Button>
             </Card>
@@ -375,7 +375,7 @@ const MembershipPage = () => {
                 size="lg"
                 disabled={paying}
                 onClick={() => void handleBuy()}
-                className="mt-9 w-full bg-white text-black hover:bg-white/90"
+                className="mt-auto w-full bg-white text-black hover:bg-white/90"
               >
                 {paying && <Icon icon={restartCircleLinear} className="motion-safe:animate-spin" />}
                 {paying ? '正在打开收银台' : isMember ? '续费一个月' : '选择 Pro'}

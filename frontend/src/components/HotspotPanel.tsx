@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 
 import TopicCard from './TopicCard'
 import { hotspotApi, TopicCard as TopicCardData } from '../services/api'
+import { CONTENT_CREATION_DEMO_TOPICS } from '../data/contentCreationDemo'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card'
@@ -48,13 +49,15 @@ interface HotspotPanelProps {
 
 const HotspotPanel: React.FC<HotspotPanelProps> = ({ onPickTopic, embedded = false }) => {
   const navigate = useNavigate()
-  const [domain, setDomain] = useState('')
-  const [keywords, setKeywords] = useState('')
+  const shouldSeedDemo = embedded && import.meta.env.DEV
+  const [domain, setDomain] = useState(shouldSeedDemo ? 'AI 内容创作' : '')
+  const [keywords, setKeywords] = useState(shouldSeedDemo ? '工作流、效率' : '')
   const [count, setCount] = useState(5)
   const [searching, setSearching] = useState(false)
-  const [topics, setTopics] = useState<TopicCardData[]>([])
+  const [topics, setTopics] = useState<TopicCardData[]>(shouldSeedDemo ? CONTENT_CREATION_DEMO_TOPICS : [])
   const [meta, setMeta] = useState<{ search_available: boolean } | null>(null)
-  const [lastQuery, setLastQuery] = useState('')
+  const [lastQuery, setLastQuery] = useState(shouldSeedDemo ? 'AI 内容创作 · 工作流、效率' : '')
+  const [isDemoResult, setIsDemoResult] = useState(shouldSeedDemo)
 
   const handleSearch = async () => {
     if (!domain.trim()) {
@@ -69,6 +72,7 @@ const HotspotPanel: React.FC<HotspotPanelProps> = ({ onPickTopic, embedded = fal
       const res = await hotspotApi.search({ domain: normalizedDomain, keywords: normalizedKeywords, count })
       setTopics(res.topics || [])
       setMeta({ search_available: res.search_available })
+      setIsDemoResult(false)
       setLastQuery([normalizedDomain, normalizedKeywords].filter(Boolean).join(' · '))
       if (!res.topics?.length) toast.info('没有生成选题，换个领域再试试')
     } catch (error: any) {
@@ -180,7 +184,7 @@ const HotspotPanel: React.FC<HotspotPanelProps> = ({ onPickTopic, embedded = fal
                 </p>
               </div>
               <Badge variant="outline" className="w-fit font-normal">
-                {meta?.search_available ? '联网热点' : 'AI 推荐'}
+                {isDemoResult ? '演示数据' : meta?.search_available ? '联网热点' : 'AI 推荐'}
               </Badge>
             </div>
 

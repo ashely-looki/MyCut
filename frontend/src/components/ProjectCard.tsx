@@ -19,7 +19,6 @@ import 'dayjs/locale/zh-cn'
 
 import { projectApi } from '../services/api'
 import { Project } from '../store/useProjectStore'
-import { UnifiedStatusBar } from './UnifiedStatusBar'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -282,18 +281,31 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
   const category = categoryMap[videoCategory] || categoryMap.default
   const canRetry = normalizedStatus === 'failed' || normalizedStatus === 'processing' || normalizedStatus === 'importing'
   const displayName = project.name.replace(/^成片(?:\s*[：:]\s*)?/, '').trim() || project.name
+  const isActiveStatus = ['downloading', 'importing', 'pending', 'processing'].includes(normalizedStatus)
+  const statusLabel = normalizedStatus === 'completed'
+    ? '已完成'
+    : normalizedStatus === 'failed'
+      ? '处理失败'
+      : normalizedStatus === 'downloading'
+        ? `下载中 ${progressPercent}%`
+        : normalizedStatus === 'importing'
+          ? '导入中'
+          : normalizedStatus === 'pending'
+            ? '等待处理'
+            : '处理中'
+  const statusTextClass = normalizedStatus === 'failed'
+    ? 'text-red-600 dark:text-red-400'
+    : isActiveStatus
+      ? 'text-blue-600 dark:text-blue-400'
+      : 'text-muted-foreground'
+  const statusDotClass = normalizedStatus === 'failed'
+    ? 'bg-red-500'
+    : isActiveStatus
+      ? 'bg-blue-500'
+      : 'bg-muted-foreground/60'
 
   if (variant === 'compact') {
     const displayThumbnail = videoThumbnail || fallbackThumbnail
-    const statusLabel = normalizedStatus === 'completed'
-      ? '已完成'
-      : normalizedStatus === 'failed'
-        ? '处理失败'
-        : normalizedStatus === 'downloading'
-          ? `下载中 ${progressPercent}%`
-          : normalizedStatus === 'importing'
-            ? '导入中'
-            : '处理中'
 
     return (
       <Card className="group h-[355px] overflow-hidden rounded-[24px] border-0 bg-card shadow-none">
@@ -328,7 +340,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
           </button>
 
           <div className="mt-5 flex items-center justify-between gap-3">
-            <Badge className="h-10 rounded-full border-0 bg-[#2f86f6]/[0.08] px-4 text-sm font-normal text-[#2f86f6] shadow-none hover:bg-[#2f86f6]/[0.08]">
+            <Badge className={`h-10 rounded-full border-0 px-4 text-sm font-normal shadow-none ${normalizedStatus === 'failed' ? 'bg-red-50 text-red-700 hover:bg-red-50 dark:bg-red-500/15 dark:text-red-300 dark:hover:bg-red-500/15' : isActiveStatus ? 'bg-blue-50 text-blue-700 hover:bg-blue-50 dark:bg-blue-500/15 dark:text-blue-300 dark:hover:bg-blue-500/15' : 'bg-muted text-muted-foreground hover:bg-muted'}`}>
               <Icon icon={playCircleBold} className="size-5" />
               {statusLabel}
             </Badge>
@@ -441,12 +453,6 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
           </Badge>
         )}
 
-        {normalizedStatus === 'completed' && (
-          <Badge className="absolute right-3 top-3 rounded-full border-0 bg-background/92 px-3 py-1 text-[11px] font-medium text-foreground shadow-sm backdrop-blur-sm hover:bg-background/92">
-            已完成
-          </Badge>
-        )}
-
         {videoThumbnail && (
           <span className="absolute left-1/2 top-1/2 flex size-11 -translate-x-1/2 -translate-y-1/2 scale-95 items-center justify-center rounded-full bg-black/70 text-white opacity-0 shadow-lg backdrop-blur-md transition-[opacity,transform] duration-200 group-hover:scale-100 group-hover:opacity-100">
             <Icon icon={playCircleBold} className="size-6 text-white" />
@@ -468,34 +474,12 @@ const ProjectCard: React.FC<ProjectCardProps> = ({
           </button>
         </div>
 
-        {normalizedStatus !== 'completed' && (
-          <div className="mt-3">
-            <UnifiedStatusBar
-              projectId={project.id}
-              status={normalizedStatus}
-              downloadProgress={progressPercent}
-              onStatusChange={(newStatus) => {
-                console.log(`项目 ${project.id} 状态变化: ${normalizedStatus} -> ${newStatus}`)
-              }}
-              onDownloadProgressUpdate={(progress) => {
-                console.log(`项目 ${project.id} 下载进度更新: ${progress}%`)
-              }}
-            />
-          </div>
-        )}
-
       </CardContent>
 
       <CardFooter className="justify-between border-t border-border/70 bg-transparent px-3 py-2.5">
-        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Icon icon={videoFrameLinear} className="size-3.5" />
-          {normalizedStatus === 'completed'
-            ? '可预览和下载'
-            : normalizedStatus === 'failed'
-              ? '处理失败'
-              : normalizedStatus === 'pending'
-                ? '等待处理'
-                : '后台处理中'}
+        <span className={`flex items-center gap-2 text-xs font-medium ${statusTextClass}`}>
+          <span aria-hidden="true" className={`size-2 rounded-full ${statusDotClass}`} />
+          {statusLabel}
         </span>
         <div className="flex items-center gap-1">
           {canRetry && (
